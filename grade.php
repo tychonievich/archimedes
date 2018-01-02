@@ -91,9 +91,11 @@ if (array_key_exists('getcomments', $_REQUEST)) {
 }
 
 
+header('Content-Type: text/html; charset=utf-8');
 ?>﻿<!DOCTYPE html>
 <html><head>
 	<title>Archimedes Grading Server</title>
+	
 	<style>
 body { font-family: sans-serif; }
 .assignment, .action { border-radius:1ex; padding:1ex; margin:1ex 0ex; }
