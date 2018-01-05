@@ -251,7 +251,7 @@ leavePre();
 // $isself = true; $isstaff = false; // try real user view
 
 // show welcome line, which also helps TAs know if they are not logged in as themselves
-echo "<h1>".($isself ? "Welcome," : "Viewing as")." <span class='name'>$me[name]</span> ($user)</h1>\n";
+echo "<h1>".($isself ? "Welcome," : "Viewing as")." <span class='name'>$me[name]</span> ($user)</h1><a style='text-align:center; display:block;' href='//cs1110.cs.virginia.edu/'>Return to course page</a>\n";
 
 // handle user-level uploads and requests
 if (array_key_exists('extension_request', $_POST)) {

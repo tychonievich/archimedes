@@ -675,6 +675,7 @@ function rubricTree($rubric, $comments, $grade, $prefix, $path="", $name="") {
 		echo "</dd>";
 		echo '</dl>';
 	} else if ($rubric['kind'] == 'percentage') {
+		// if in grade but not in comments, might not show up (untested, but I don't think it will)
 		if (array_key_exists('set',$rubric) && $rubric['set']) {
 			echo "<div class='percentage set' id='$prefix$path' name='$name'>";
 			$radio = 'checkbox';
@@ -712,24 +713,11 @@ function rubricTree($rubric, $comments, $grade, $prefix, $path="", $name="") {
 			}
 		}
 		echo '</div>';
-/*
-		if ($path == '') $path = "\n"; // <-- not elegant, but works with current comment pool format
-		if (array_key_exists($path, $comments))
-			foreach($comments[$path] as $obj) {
-				echo "<br/>";
-				echo "<label><input type='$radio' name='$prefix$path' value='";
-				echo htmlspecialchars(json_encode($obj), ENT_QUOTES|ENT_HTML5);
-				if (array_key_exists('comment', $grade) && $obj['comment'] == $grade['comment']) echo "' checked='checked"; // does not deal with set-valued...
-				echo "'/> ";
-				echo htmlspecialchars($obj['comment'], ENT_QUOTES|ENT_HTML5);
-				echo " ($obj[ratio])";
-				echo "</label>";
-			}
-		echo '</div>';
-*/
 	} else if ($rubric['kind'] == 'buckets') {
 		echo "<dl class='buckets' id='$prefix$path'>";
 		foreach($rubric['buckets'] as $i=>$bucket) {
+			$coms = array();
+			if (array_key_exists("$path\n$i", $comments)) $coms = array_merge($comments["$path\n$i"], $coms);
 			// extract the two parts of each comment, general and specific
 			if (array_key_exists($i, $grade)) {
 				$general = array();
@@ -737,23 +725,22 @@ function rubricTree($rubric, $comments, $grade, $prefix, $path="", $name="") {
 				foreach($grade[$i] as $j=>$txt) {
 					commentSplit($txt, $general[$j], $specific[$j]);
 				}
+				$coms = array_merge($general, $coms);
 			}
 			// the following trusts that all general comments in $grade are in $comments
 			echo "<dt>$bucket[name] ($bucket[score])</dt><dd class='bucket' name='$name/$i' id='$prefix$path\n$i'>";
 			echo "<input type='text' id='new\n$prefix$path\n$i'/><input type='button' value='add comment' onclick='addcomment(".json_encode("new\n$prefix$path\n$i").")'/>";
-			if (array_key_exists("$path\n$i", $comments)) {
-				foreach($comments["$path\n$i"] as $j=>$txt) {
-					$idx = array_key_exists($i, $grade) ? array_search($txt, $general) : False;
-					echo "<br/>";
-					echo "<label><input type='checkbox' name='$prefix$path\n$i' value='";
-					echo htmlspecialchars($txt, ENT_QUOTES|ENT_HTML5);
-					if ($idx !== False) echo "' checked='checked";
-					echo "'/> ";
-					echo htmlspecialchars($txt, ENT_QUOTES|ENT_HTML5);
-					echo "</label> (<textarea rows='1'>";
-					if ($idx !== False) echo htmlspecialchars($specific[$idx], ENT_QUOTES|ENT_HTML5);
-					echo "</textarea>)";
-				}
+			foreach($coms as $j=>$txt) {
+				$idx = array_key_exists($i, $grade) ? array_search($txt, $general) : False;
+				echo "<br/>";
+				echo "<label><input type='checkbox' name='$prefix$path\n$i' value='";
+				echo htmlspecialchars($txt, ENT_QUOTES|ENT_HTML5);
+				if ($idx !== False) echo "' checked='checked";
+				echo "'/> ";
+				echo htmlspecialchars($txt, ENT_QUOTES|ENT_HTML5);
+				echo "</label> (<textarea rows='1'>";
+				if ($idx !== False) echo htmlspecialchars($specific[$idx], ENT_QUOTES|ENT_HTML5);
+				echo "</textarea>)";
 			}
 			echo "</dd>";
 		}
