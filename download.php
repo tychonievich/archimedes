@@ -1,8 +1,5 @@
 <?php
 include "tools.php";
-//////////////////////////////////////////////////////
-$_SERVER['PHP_AUTH_USER'] = 'lat7h'; /// TESTING ONLY!
-//////////////////////////////////////////////////////
 logInAs();
 
 if (!array_key_exists('file', $_REQUEST)) die('Failed to provide a file name');

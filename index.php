@@ -57,6 +57,8 @@
 		.xp-missed { background: rgba(255,127,0,0.5); }
 		.xp-future { background: rgba(0,0,0,0.125); }
 		
+		.snapshot { max-width: 50%; display: table; margin: 1ex auto; box-shadow: 0ex 0ex 1ex 0ex rgba(0,0,0,0.25); text-align: center; color: rgba(0,0,0,0.5);}
+		
 		/* input, select, option { font-size:100%; } */
 	</style>
 	<script>//<!--
@@ -72,6 +74,7 @@ function sensibleDateFormat(d) {
 	// var time = d.toTimeString().substr(0,5);
 	if (d.getHours() > 12) { var time = (d.getHours()-12) + (d.getMinutes() != 0 ? ':' + String(d.getMinutes()).padStart(2,'0') : '') + ' pm'; }
 	else { var time = d.getHours() + (d.getMinutes() != 0 ? ':' + String(d.getMinutes()).padStart(2,'0') : '') + (d.getHours() == 12 ? ' pm' : ' am'); }
+	if (time == '0 am') return dow + ' ' + date;
 	return dow + ' ' + date + ' ' + time;// + ' ' + tz;
 }
 
@@ -166,6 +169,35 @@ if ($isstaff && array_key_exists('roster', $_FILES) && file_exists($_FILES['rost
 	updateRosterSpreadsheet($_FILES['roster'], $remove);
 	$t2 = microtime(true);
 	preFeedback("...done in ".($t2-$t1)." seconds");
+	unset($_FILES['roster']);
+}
+// If staff have uploaded a photo archive, accept it
+if ($isstaff && array_key_exists('photo_archive', $_FILES) && file_exists($_FILES['photo_archive']['tmp_name'])) {
+	preFeedback("Processing ".$_FILES['photo_archive']['name']."...");
+	$t1 = microtime(true);
+	try {
+		$zip = new ZipArchive;
+		$zip->open($_FILES['photo_archive']['tmp_name'], ZipArchive::CHECKCONS);
+		for($i=0; $i<$zip->numFiles; $i+=1) {
+			$name = $zip->getNameIndex($i);
+			$user = $name;
+			if (strrpos($user, '.') !== FALSE) $user = substr($user, 0, strrpos($user, '.'));
+			if (array_key_exists($user, fullRoster())) {
+				file_put_contents("users/$name", $zip->getFromIndex($i));
+				chmod("users/$name", 0666);
+				preFeedback("Added or updated $user");
+			} else {
+				preFeedback("skipping $name (not enrolled)");
+			}
+		}
+		$zip->close();
+	} catch (Exception $e) {
+		preFeedback("Not a properly formatted .zip file, or server permission error.");
+	}
+	// ...
+	$t2 = microtime(true);
+	preFeedback("...done in ".($t2-$t1)." seconds");
+	unset($_FILES['photo_archive']);
 }
 
 // If faculty and sent extension decision, accept it
@@ -235,12 +267,7 @@ if ($isfaculty && array_key_exists('extension_decision', $_POST)) {
 	}
 }
 
-
 // TO DO: process other uploads, like assignments
-// TO DO: add grader interface
-// TO DO: add regrade reports and responses
-// TO DO: add other interfaces
-// TO DO: update the autograder scripts
 
 
 
@@ -252,6 +279,10 @@ leavePre();
 
 // show welcome line, which also helps TAs know if they are not logged in as themselves
 echo "<h1>".($isself ? "Welcome," : "Viewing as")." <span class='name'>$me[name]</span> ($user)</h1><a style='text-align:center; display:block;' href='//cs1110.cs.virginia.edu/'>Return to course page</a>\n";
+
+if (!$isself) {
+	echo "<img src='picture.php?user=$user' alt='no picture of $user found' class='snapshot'/>";
+}
 
 // handle user-level uploads and requests
 if (array_key_exists('extension_request', $_POST)) {
@@ -371,7 +402,7 @@ if (array_key_exists('submission', $_FILES)) {
 		}
 	}
 } // end submission posting
-else if (array_key_exists('CONTENT_LENGTH', $_SERVER) && floatval($_SERVER['CONTENT_LENGTH']) > (1<<20)) {
+else if (array_key_exists('CONTENT_LENGTH', $_SERVER) && floatval($_SERVER['CONTENT_LENGTH']) > (1<<27)) {
 	user_error_msg("You appear to have attempted to send some very large file, which our server's security settings caused us not to receive.");
 }
 
@@ -463,6 +494,13 @@ if ($isfaculty) {
 	<input type="file" name="roster"/></label>
 	<label>and remove users not in sheet: <input type="checkbox" name="remove"/></label>
 	<input type="submit"/>
+	</form></div>
+
+	<div class="action"><form action='<?=$_SERVER['REQUEST_URI']?>' method='post' enctype="multipart/form-data">
+	Upload <label> student (and staff) photos (.zip):
+	<input type="file" name="photo_archive"/></label>
+	<input type="submit"/>
+	<br/>(You can use <a href="download.php?file=support/collab_photo.py">collab_photo.py</a> to create this archive)
 	</form></div>
 
 	<div class="action"><form action='<?=$_SERVER['REQUEST_URI']?>' method='post'>

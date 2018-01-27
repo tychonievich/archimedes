@@ -209,7 +209,7 @@ if __name__ == '__main__':
 			elif '/queued/' in event.pathname and not event.mask & pin.IN_IGNORED:
 				dequeue(event.pathname)
 			else:
-				log('ignoring event on', event.pathname)
+				pass # log('ignoring event on', event.pathname)
 
 	handler = EventHandler()
 	notifier = pin.Notifier(wm, handler)

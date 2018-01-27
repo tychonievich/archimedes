@@ -8,8 +8,8 @@ $superusers = array(
 	'lat7h'=>array('name'=>'Luther Tychonievich', 'role'=>'Admin'),
 	'up3f'=>array('name'=>'Upsorn Praphamontripong', 'role'=>'Admin'),
 	'cd9au'=>array('name'=>'Craig Dill', 'role'=>'Admin'),
-	'tbh3f'=>array('name'=>'Tom Horton', 'role'=>'Admin'),
-	'mss2x'=>array('name'=>'Mark Sherriff', 'role'=>'Admin'),
+//	'tbh3f'=>array('name'=>'Tom Horton', 'role'=>'Admin'),
+//	'mss2x'=>array('name'=>'Mark Sherriff', 'role'=>'Admin'),
 	'no grader'=>array('name'=>'no grader assigned', 'role'=>'Teaching Assistant'),
 );
 
@@ -40,10 +40,11 @@ function fullRoster() {
 }
 
 /// Helper function to read one roster entry (for student access)
-function rosterEntry($id) {
+function rosterEntry($id, $check=false) {
 	global $superusers, $_roster;
 	$me = false;
 	// if ($_roster) return $_roster[$id]; // faster?
+	if ($check && !preg_match('/^[a-z]+[0-9][a-z]+$/', $id)) return $me;
 	if (file_exists("users/$id.json")) {
 		$me = json_decode(file_get_contents("users/$id.json"), true);
 		$me['id'] = $id;
@@ -95,6 +96,37 @@ function letterOf($ratio, $html=False) {
 	}
 	if ($html && substr($letter, 1) == "-") return $letter[0] + "&minus;";
 	return $letter;
+}
+
+function updateUser($id, $newdata, $remove=false) {
+	global $_roster;
+	if (!$remove) {
+		$old = rosterEntry($id);
+		if ($old) $newdata = array_merge($old, $newdata);
+	}
+	$newroster = fullRoster();
+	$newroster[$id] = $newdata;
+	
+	// save to a timestamped file, then update the hard link
+	$realname = 'meta/.' . date_format(date_create(), "Ymd-His") . "-roster.json";
+	if (file_put_contents($realname, json_encode($newroster, JSON_PRETTY_PRINT)) !== FALSE) {
+		rename('meta/roster.json', 'meta/backup-roster.json');
+		if (link($realname, 'meta/roster.json')) {
+			unlink('meta/backup-roster.json');
+		} else {
+			preFeedback("ERROR: failed to update roster.json link");
+			rename('meta/backup-'.$realname, 'meta/roster.json');
+		}
+	} else {
+		preFeedback("ERROR: failed to save master roster file (not sure why?)");
+	}
+	if (file_put_contents("users/$id.json", json_encode($newdata)) == FALSE) {
+		preFeedback("ERROR: failed to save $uid.json");
+	} else {
+		chmod("users/$uid.json", 0666);
+	}
+
+	$_roster = $newroster;
 }
 
 /**
@@ -596,8 +628,7 @@ function staffDropdown($name) {
 	// $ans = "<select name='$name'><option value=''>(select)</option>";
 	$ans = "<input type='text' title='example: mst3k' list='staff-list' name='$name'/><datalist id='staff-list'>";
 	foreach(fullRoster() as $slug=>$details) {
-		if (array_key_exists('role', $details) && $details['role'] == 'Admin') continue;
-		if (!array_key_exists('role', $details) || $details['role'] == 'Student') continue;
+		if (!hasStaffRole($details)) continue;
 		$ans .= "<option value='$slug'>$details[name] ($slug)</option>";
 	}
 	// $ans .= '</select>';
