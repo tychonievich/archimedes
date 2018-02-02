@@ -142,9 +142,11 @@ function docollapse() {
 		hiders[i].firstElementChild.onclick = function(e) {
 			var parent = this.parentElement;
 			if (parent.classList.contains('hidden')) {
-				parent.classList.replace('hidden', 'shown');
+				parent.classList.remove('hidden');
+				parent.classList.add('shown');
 			} else {
-				parent.classList.replace('shown', 'hidden');
+				parent.classList.remove('shown');
+				parent.classList.add('hidden');
 			}
 		}
 	}
@@ -166,7 +168,8 @@ if ($isstaff && array_key_exists('roster', $_FILES) && file_exists($_FILES['rost
 	preFeedback("Processing ".$_FILES['roster']['name']."...");
 	$t1 = microtime(true);
 	$remove = array_key_exists('remove', $_POST) && $_POST['remove'] != 'off';
-	updateRosterSpreadsheet($_FILES['roster'], $remove);
+	$dropWaiters = array_key_exists('nowaiters', $_POST) && $_POST['nowaiters'] != 'off';
+	updateRosterSpreadsheet($_FILES['roster'], $remove, !$dropWaiters);
 	$t2 = microtime(true);
 	preFeedback("...done in ".($t2-$t1)." seconds");
 	unset($_FILES['roster']);
@@ -444,6 +447,10 @@ if ($isstaff) {
 	Log in as <?=userDropdown('asuser')?>
 	<input type='submit' value="Change Identity"/>
 	</form></div>
+	<div class="action">
+	Visit the <a href="gradegroup.php">grading group site</a> or <a href="grade.php">the grading site</a>.
+	</div>
+	
 	<?php
 }
 if ($isfaculty) {
@@ -492,7 +499,8 @@ if ($isfaculty) {
 	<div class="action"><form action='<?=$_SERVER['REQUEST_URI']?>' method='post' enctype="multipart/form-data">
 	Upload <label> new roster spreadsheet:
 	<input type="file" name="roster"/></label>
-	<label>and remove users not in sheet: <input type="checkbox" name="remove"/></label>
+	<br/><label>and remove users not in sheet: <input type="checkbox" name="remove"/></label>
+	<br/><label>and skip Waitlisted Student roles: <input type="checkbox" name="nowaiters"/></label>
 	<input type="submit"/>
 	</form></div>
 
@@ -531,6 +539,7 @@ foreach(assignments() as $slug=>$details) {
 	$due = assignmentTime('due', $details);
 	$close = closeTime($details);
 	$notmine = !applies_to($me, $details) || file_exists("uploads/$slug/$user/.excused");
+	if ($slug == 'Lab03') $notmine = false;
 
 	
 	// determine status and begin displaying assignment

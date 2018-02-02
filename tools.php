@@ -44,7 +44,7 @@ function rosterEntry($id, $check=false) {
 	global $superusers, $_roster;
 	$me = false;
 	// if ($_roster) return $_roster[$id]; // faster?
-	if ($check && !preg_match('/^[a-z]+[0-9][a-z]+$/', $id)) return $me;
+	if ($check && !preg_match('/^[a-z0-9 ]+$/', $id)) return $me;
 	if (file_exists("users/$id.json")) {
 		$me = json_decode(file_get_contents("users/$id.json"), true);
 		$me['id'] = $id;
@@ -98,14 +98,49 @@ function letterOf($ratio, $html=False) {
 	return $letter;
 }
 
+// ensures $roster[grader
+function makeConsistent($newdata) {
+	// ensure everyone has a name
+	foreach($newdata as $k=>&$v) {
+		if (!array_key_exists('name', $v)) $v['name'] = 'name unknown';
+		if (array_key_exists('graded', $v)) unset($v['graded']); // <-- prep for next loop
+		if (array_key_exists('grader', $v) && $v['grader'] == 'no grader') {
+			unset($v['grader']);
+			if (array_key_exists('grader_name', $v)) unset($v['grader_name']);
+		}
+	}
+	// and all graders are consistent
+	foreach($newdata as $k=>&$v) {
+		if (array_key_exists('grader', $v)) {
+			if (!array_key_exists($v['grader'], $newdata)) {
+				preFeedback("grader $v[grader] is not in the roster; removing from $v[name] ($k)");
+				unset($v['grader']);
+			} else if (!hasStaffRole($newdata[$v['grader']])) {
+				preFeedback("grader $v[grader] does not have a staff role; removing from $[name] ($k)");
+				unset($v['grader']);
+			} else {
+				$v['grader_name'] = $newdata[$v['grader']]['name'];
+				if (!array_key_exists('graded', $newdata[$v['grader']])) $newdata[$v['grader']]['graded'] = array();
+				$newdata[$v['grader']]['graded'][] = $k;
+			}
+		}
+	}
+	return $newdata;
+}
+
 function updateUser($id, $newdata, $remove=false) {
 	global $_roster;
 	if (!$remove) {
 		$old = rosterEntry($id);
 		if ($old) $newdata = array_merge($old, $newdata);
 	}
+	if (array_key_exists('grader', $newdata) && $newdata['grader'] == 'no grader') {
+		unset($v['grader']);
+	}
 	$newroster = fullRoster();
 	$newroster[$id] = $newdata;
+	$newroster = makeConsistent($newroster);
+	$newdata = $newroster[$id];
 	
 	// save to a timestamped file, then update the hard link
 	$realname = 'meta/.' . date_format(date_create(), "Ymd-His") . "-roster.json";
@@ -125,6 +160,15 @@ function updateUser($id, $newdata, $remove=false) {
 	} else {
 		chmod("users/$uid.json", 0666);
 	}
+	if (array_key_exists('grader', $newdata)) {
+		$id = $newdata['grader'];
+		if (file_put_contents("users/$id.json", json_encode($newroster[$id])) == FALSE) {
+			preFeedback("ERROR: failed to save $uid.json");
+		} else {
+			chmod("users/$uid.json", 0666);
+		}
+	}
+	
 
 	$_roster = $newroster;
 }
@@ -134,7 +178,7 @@ function updateUser($id, $newdata, $remove=false) {
  * into information for user records.
  * Does allow uploading several different sheets (e.g., Collab's for name/role/section; a custom one for grading groups; ...)
  */
-function updateRosterSpreadsheet($uploadrecord, $remove=False) {
+function updateRosterSpreadsheet($uploadrecord, $remove=False, $keepWaiters=True) {
 	// read the current roster, and prepare some bookkeeping variables
 	$olddata = fullRoster();
 	if ($remove) $newdata = array();
@@ -219,6 +263,25 @@ function updateRosterSpreadsheet($uploadrecord, $remove=False) {
 		}
 	}
 	
+	// possibly remove waitlisted students
+	if (!$keepWaiters) {
+		foreach($newdata as $k=>$v) {
+			if (array_key_exists('role', $v) && $v['role'] == 'Waitlisted Student') {
+				preFeedback("$k was waitlisted");
+				unset($newdata[$k]);
+			} else {
+				if (array_key_exists('groups', $v)) {
+					$sections = explode(', ', $v['groups']);
+					foreach($sections as $i=>$s) {
+						if (strpos($s, 'Waitlist') > 0) unset($sections[$i]);
+					}
+					$newdata[$k]['groups'] = implode(', ', $sections);
+				}
+			}
+		}
+	}
+	
+	
 	// finish bookkeeping, and unify remove and non-remove cases
 	if ($remove) {
 		$killed = array_diff_key($olddata, $newdata);
@@ -235,28 +298,7 @@ function updateRosterSpreadsheet($uploadrecord, $remove=False) {
 	} else {
 		$newdata = $olddata;
 	}
-	// ensure everyone has a name
-	foreach($newdata as $k=>&$v) {
-		if (!array_key_exists('name', $v)) $v['name'] = 'name unknown';
-		if (array_key_exists('graded', $v)) unset($v['graded']); // <-- prep for next loop
-	}
-	// and all graders are consistent
-	foreach($newdata as $k=>&$v) {
-		if (array_key_exists('grader', $v)) {
-			if (!array_key_exists($v['grader'], $newdata)) {
-				preFeedback("grader $v[grader] is not in the roster; removing from $v[name] ($k)");
-				unset($v['grader']);
-			} else if (!hasStaffRole($newdata[$v['grader']])) {
-				preFeedback("grader $v[grader] does not have a staff role; removing from $[name] ($k)");
-				unset($v['grader']);
-			} else {
-				$v['grader_name'] = $newdata[$v['grader']]['name'];
-				if (!array_key_exists('graded', $newdata[$v['grader']])) $newdata[$v['grader']]['graded'] = array();
-				$newdata[$v['grader']]['graded'][] = $k;
-			}
-		}
-	}
-	
+	$newdata = makeConsistent($newdata);
 	if ($added == 0 && $changed == 0 && $removed == 0) {
 		preFeedback("-=> $uploadrecord[name] <=- New roster same as old");
 		return;
