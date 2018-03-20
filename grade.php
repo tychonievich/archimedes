@@ -32,10 +32,10 @@ if (array_key_exists('addgrade', $_REQUEST)) {
 		$late = $asgn['late-policy'];
 		$days = intval(1 + ($sentin - $due) / (24*60*60));
 		$mult = array('comment'=>($days == 1 ? "$days day late" : "$days days late"));
-		if ($days >= count($late)) {
+		if ($days-1 >= count($late)) {
 			$mult['ratio'] = $late[count($late)-1];
 		} else {
-			$mult['ratio'] = $late[$days];
+			$mult['ratio'] = $late[$days-1];
 		}
 		$grade['grade'] *= $mult['ratio'];
 		if (!array_key_exists('.mult', $grade)) $grade['.mult'] = array($mult);
@@ -138,6 +138,8 @@ dl.comments ul { margin:0em; }
 .linklist li { margin:1ex 0ex; }
 
 .advice { font-style: italic; opacity:0.5;}
+dl.buckets > dt { font-weight: bold; }
+dl.buckets > dd > p { text-indent:-2em; margin:0em; margin-left: 2em; }
 	</style>
 	<style>
 		body { margin:0em; padding:0em; border:1ex solid rgba(255,255,255,0); }
@@ -285,6 +287,12 @@ function _addcomment(key, value) {
 	var path = key.substring(1).replace(/\n/g,'/');
 	var cssSelector = '[name="'+path+'"]';
 	var places = document.querySelectorAll(cssSelector);
+	if (!places.length) { 
+		path = "/"+path; 
+		cssSelector = '[name="'+path+'"]';
+		places = document.querySelectorAll(cssSelector); 
+	}
+	console.log(key, path, value, places);
 	for(var i=0; i<places.length; i+=1) {
 		var p = places[i];
 		var kind = (p.classList.contains('percentage') && !p.classList.contains('set')) ? 'radio' : 'checkbox';
@@ -474,6 +482,10 @@ function commentPoll(slug) {
 		}
 	);
 }
+function unDoneOne() {
+	var v = document.querySelectorAll('table.done');
+	if (v.length > 0) v[v.length-1].classList.remove('done');
+}
 
 function ajax(payload, qstring, empty=null, response=null) {
 	var xhr = new XMLHttpRequest();
@@ -518,18 +530,19 @@ function gradeableTree($limit=False) {
 				}
 				if (count(glob("$dir/*", GLOB_NOSORT)) == 0) { continue; } // no submission
 				$sid = explode('/',$dir)[2];
+				$student = $everyone[$sid];
+				$gid = array_key_exists('grader', $student) ? $student['grader'] : 'no grader';
 				$status = file_exists("$dir/.grade") ? (file_exists("meta/requests/regrade/$slug-$sid") ? 'regrade' : 'graded') : 'ungraded';
 				
 				if (!array_key_exists($slug, $ans)) $ans[$slug] = array(
 					'regrade'=>0,
 					'graded'=>0,
 					'ungraded'=>0,
-					'graders'=>array()
+					'graders'=>array(),
 				);
-				$ans[$slug][$status] += 1;
+				if ($gid != 'no grader')
+					$ans[$slug][$status] += 1;
 
-				$student = $everyone[$sid];
-				$gid = array_key_exists('grader', $student) ? $student['grader'] : 'no grader';
 				if (!array_key_exists($gid, $ans[$slug]['graders'])) $ans[$slug]['graders'][$gid] = array(
 					'regrade'=>0,
 					'graded'=>0,
@@ -551,11 +564,11 @@ function toGrade($slug, $grader, $redo) {
 		}
 		shuffle($ans);
 	} else if ($redo == 'review') {
-		if ($grader == 'all') { // show anythong anyone has graded
+		if ($grader == 'all') { // show anything anyone has graded
 			foreach(glob("users/.graded/*/$slug") as $req) {
 				$ans = array_merge($ans, explode("\n", trim(file_get_contents($req))));
 			}
-			sort($ans);
+			shuffle($ans);
 		} else { // show only things $grader has graded
 			if (file_exists("users/.graded/$grader/$slug"))
 				$ans = explode("\n", trim(file_get_contents("users/.graded/$grader/$slug")));
@@ -577,7 +590,9 @@ function toGrade($slug, $grader, $redo) {
 			if (file_exists("$path/.extension") && closeTime(json_decode(file_get_contents("$path/.extension"),true)) > time()) continue;
 			$ans[] = $student;
 		}
+		shuffle($ans);
 	}
+	if (array_key_exists('limit', $_REQUEST)) $ans = array_slice($ans, 0, intval($_REQUEST['limit']));
 	return $ans;
 }
 function showGradingView($slug, $student, $rubric, $comments) {
@@ -680,6 +695,7 @@ function rubricTree($rubric, $comments, $grade, $prefix, $path="", $name="") {
 			echo "<div class='percentage set' id='$prefix$path' name='$name'>";
 			$radio = 'checkbox';
 			$check = array();
+			$pref = "&times;";
 			foreach($grade as $comobj) {
 				$key = ''; $ex = '';
 				commentSplit($comobj['comment'], $key, $ex);
@@ -689,28 +705,35 @@ function rubricTree($rubric, $comments, $grade, $prefix, $path="", $name="") {
 			echo "<div class='percentage' id='$prefix$path' name='$name'>";
 			$radio = 'radio';
 			$check = array();
+			$pref = "score ";
 			if (array_key_exists('comment', $grade)) {
 				$key = ''; $ex = '';
 				commentSplit($grade['comment'], $key, $ex);
 				$check[round($grade['ratio'],8)." ".$key] = $ex;
+				echo "<div>Current score: $grade[ratio]</div>";
 			}
 		}
-		echo "&times;<input type='text' id='ratio\n$prefix$path' size='3' value='1'/>: <input type='text' id='new\n$prefix$path'/> <input type='button' value='add comment' onclick='addcomment(".json_encode("new\n$prefix$path").")'/>";
+		echo "$pref <input type='text' id='ratio\n$prefix$path' size='3' value='1'/>: <input type='text' id='new\n$prefix$path'/> <input type='button' value='add comment' onclick='addcomment(".json_encode("new\n$prefix$path").")'/>";
 		$path_fix = $path ? $path : "\n"; // <-- not elegant, but works with current comment pool format
-		if (array_key_exists($path_fix, $comments)) {
-			foreach($comments[$path_fix] as $obj) {
-				echo "<br/>";
-				echo "<label><input type='$radio' name='$prefix$path' value='";
-				echo htmlspecialchars(json_encode($obj), ENT_QUOTES|ENT_HTML5);
-				$key = round($obj['ratio'],8)." ".$obj['comment'];
-				$more = False;
-				if (array_key_exists($key, $check)) { echo "' checked='checked"; $more = $check[$key]; }
-				echo "'/> &times;$obj[ratio]: ";
-				echo htmlspecialchars($obj['comment'], ENT_QUOTES|ENT_HTML5);
-				echo "</label> (<textarea rows='1'>";
-				if ($more !== False) echo htmlspecialchars($more, ENT_QUOTES|ENT_HTML5);
-				echo "</textarea>)";
-			}
+		$cset = array();
+		if (array_key_exists($path_fix, $comments)) { $cset = array_merge($cset, $comments[$path_fix]); }
+		if (array_key_exists('set',$rubric) && $rubric['set']) {
+			$cset = array_merge($cset, $grade);
+		} else if (array_key_exists('comment', $grade)) {
+			$cset[] = $grade;
+		}
+		foreach($cset as $obj) {
+			echo "<br/>";
+			echo "<label><input type='$radio' name='$prefix$path' value='";
+			echo htmlspecialchars(json_encode($obj), ENT_QUOTES|ENT_HTML5);
+			$key = round($obj['ratio'],8)." ".$obj['comment'];
+			$more = False;
+			if (array_key_exists($key, $check)) { echo "' checked='checked"; $more = $check[$key]; }
+			echo "'/> $pref$obj[ratio]: ";
+			echo htmlspecialchars($obj['comment'], ENT_QUOTES|ENT_HTML5);
+			echo "</label> (<textarea rows='1'>";
+			if ($more !== False) echo htmlspecialchars($more, ENT_QUOTES|ENT_HTML5);
+			echo "</textarea>)";
 		}
 		echo '</div>';
 	} else if ($rubric['kind'] == 'buckets') {
@@ -725,15 +748,13 @@ function rubricTree($rubric, $comments, $grade, $prefix, $path="", $name="") {
 				foreach($grade[$i] as $j=>$txt) {
 					commentSplit($txt, $general[$j], $specific[$j]);
 				}
-				$coms = array_merge($general, $coms);
+				$coms = array_unique(array_merge($general, $coms), SORT_REGULAR);
 			}
 			// the following trusts that all general comments in $grade are in $comments
 			echo "<dt>$bucket[name] ($bucket[score])</dt><dd class='bucket' name='$name/$i' id='$prefix$path\n$i'>";
-			echo "<input type='text' id='new\n$prefix$path\n$i'/><input type='button' value='add comment' onclick='addcomment(".json_encode("new\n$prefix$path\n$i").")'/>";
 			foreach($coms as $j=>$txt) {
 				$idx = array_key_exists($i, $grade) ? array_search($txt, $general) : False;
-				echo "<br/>";
-				echo "<label><input type='checkbox' name='$prefix$path\n$i' value='";
+				echo "<p><label><input type='checkbox' name='$prefix$path\n$i' value='";
 				echo htmlspecialchars($txt, ENT_QUOTES|ENT_HTML5);
 				if ($idx !== False) echo "' checked='checked";
 				echo "'/> ";
@@ -741,7 +762,9 @@ function rubricTree($rubric, $comments, $grade, $prefix, $path="", $name="") {
 				echo "</label> (<textarea rows='1'>";
 				if ($idx !== False) echo htmlspecialchars($specific[$idx], ENT_QUOTES|ENT_HTML5);
 				echo "</textarea>)";
+				echo "</p>";
 			}
+			echo "<input type='text' id='new\n$prefix$path\n$i'/><input type='button' value='add comment' onclick='addcomment(".json_encode("new\n$prefix$path\n$i").")'/>";
 			echo "</dd>";
 		}
 		echo '</dl>';
@@ -751,7 +774,6 @@ function rubricTree($rubric, $comments, $grade, $prefix, $path="", $name="") {
 		echo '</p>';
 	}
 }
-
 
 /*
 Home: list of assignments that have open grades, and how many
@@ -795,7 +817,8 @@ if (array_key_exists('assignment', $_REQUEST)) {
 		<div class="big notice"><h1>Review done</h1><p></p></div>
 		<p>Return to <a href="grade.php?assignment=<?=$slug?>">this assignment's index</a>.</p>
 		</div>
-		<div style="position:fixed; right:0.5ex; bottom:0.5ex; opacity:0.5;">Font size:
+		<div style="position:fixed; right:0.5ex; bottom:0.5ex; opacity:0.5;">
+			Font size:
 			<input type="text" size="4" onchange="document.body.style.fontSize = (/^[\s0-9]+$/.test(this.value) ? this.value+'pt' : this.value)"/>
 		</div>
 		<?php
@@ -837,7 +860,10 @@ if (array_key_exists('assignment', $_REQUEST)) {
 				<a href="grade.php?assignment=<?=$slug?>">this assignment's index</a>;
 				or refresh this page to see any submissions you skipped or that someone else was working on in this grading group but didn't finish grading.</p>
 			</div>
-			<div style="position:fixed; right:0.5ex; bottom:0.5ex; opacity:0.5;">Font size:
+			<div style="position:fixed; right:0.5ex; bottom:0.5ex; opacity:0.5; text-align:right;">
+				<input type="button" value="view previous student" onclick="unDoneOne()"/>
+				<br/>
+				Font size:
 				<input type="text" size="4" onchange="document.body.style.fontSize = (/^[\s0-9]+$/.test(this.value) ? this.value+'pt' : this.value)"/>
 			</div>
 			<?php
@@ -853,6 +879,7 @@ if (array_key_exists('assignment', $_REQUEST)) {
 				if ($counts['graded']) echo " (<a href='?assignment=$slug&grader=$grader&redo=own'>$counts[graded] graded</a>)";
 				if ($user == $grader && file_exists("users/.graded/$grader/$slug"))
 					 echo " (<a href='?assignment=$slug&grader=$grader&redo=review'>your grading history</a>)";
+				if ($counts['regrade']) echo " <a class='ungraded' href='?assignment=$slug&grader=$grader&redo=regrade'>$counts[regrade] to regrade</a>";
 				echo "</li>";
 			}
 			echo '</ul>';
@@ -863,14 +890,17 @@ if (array_key_exists('assignment', $_REQUEST)) {
 	$options = gradeableTree();
 	echo '<h2>Pick an assignment:</h2><ul class="linklist">';
 	foreach($options as $slug=>$stats) {
-		if ($slug[0] == '.') continue; // just in case
+		if (strlen($slug) == 0 || $slug[0] == '.') continue; // just in case
 		echo "<li><a href='$_SERVER[SCRIPT_NAME]?assignment=$slug'";
 		if ($stats['ungraded'] > 0) echo " class='ungraded'";
 		echo "><strong>$slug</strong>: $stats[graded] / ".($stats['graded'] + $stats['ungraded'])." graded</a>";
 		if (array_key_exists($user, $stats['graders'])) {
-			echo "; your students <a href='$_SERVER[SCRIPT_NAME]?assignment=$slug&grader=$user'>".$stats['graders'][$user]['graded']." / ".($stats['graders'][$user]['graded'] + $stats['graders'][$user]['ungraded'])." graded</a>";
+			echo "; your students <a href='$_SERVER[SCRIPT_NAME]?assignment=$slug&grader=$user'";
+			if ($stats['graders'][$user]['ungraded'] > 0) echo "class='ungraded'";
+			echo ">".$stats['graders'][$user]['graded']." / ".($stats['graders'][$user]['graded'] + $stats['graders'][$user]['ungraded'])." graded</a>";
 		}
 		if ($stats['regrade'] > 0) echo "; <span class='regrades'>pending <a href='$_SERVER[SCRIPT_NAME]?assignment=$slug&redo=regrade'>regrades: $stats[regrade]</a></span>";
+		if ($user == 'lat7h' || $user == 'ez4cc' || $user == 'cap4yf' || $user == 'mg3ta') echo "; view <a href='$_SERVER[SCRIPT_NAME]?assignment=$slug&grader=all&redo=own&limit=20'>20 random submissions</a>";
 		echo "</li>";
 	}
 	echo '</ul>';

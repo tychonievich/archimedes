@@ -160,9 +160,10 @@ def recordfeedback(aname, student):
 			os.utime(path+'.autofeedback', times=(mtime, mtime))
 			log('graded', aname, student, path)
 		else:
-			with open(path+'.autofeedback', 'w') as f:
-				json.dump({'stdout':'automated feedback failed to run properly','stderr':''}, f, separators=(',',':'))
-			os.utime(path+'.autofeedback', times=(0, 0))
+			pass
+			#with open(path+'.autofeedback', 'w') as f:
+				#json.dump({'stdout':'automated feedback failed to run properly','stderr':''}, f, separators=(',',':'))
+			#os.utime(path+'.autofeedback', times=(0, 0))
 	except BaseException as ex: 
 		log('grading', aname, 'for', student, 'raised', ex)
 		with open(path+'.autofeedback', 'w') as f:

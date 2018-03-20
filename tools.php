@@ -466,6 +466,12 @@ function display_grade_file($path) {
 		echo feedbackTag($data, $rubric, array_key_exists('total', $asgn) ? $asgn['total'] : False);
 	}
 	
+	if (array_key_exists('comments', $data) && array_key_exists('extension', $data['comments'])) {
+		echo "<div><strong>Extension decision:</strong><div>";
+		echo implode("</div><div>", $data['comments']['extension']);
+		echo "</div></div>";
+	}
+	
 	echo regradeTag($data, false);
 	return $data;
 }
@@ -933,15 +939,22 @@ function grade_in_course($user) {
 		}
 		$weight = 1;
 		if (array_key_exists('weight', $details)) $weight = $details['weight'];
-		if ($weight == 0 && closeTime($details) < time()) {
+		$closed = closeTime($details) < time();
+		if ($weight == 0 && $closed) {
 			$zero[] = $slug;
 			continue;
 		}
 		if (!file_exists("uploads/$slug/$user/.grade")) {
-			$earned[$grp]['future'] += $weight;
+			if ($closed && !file_exists("uploads/$slug/$user/")) $earned[$grp]['missed'] += $weight;
+			else $earned[$grp]['future'] += $weight;
 			continue;
 		}
-		$score = $weight * json_decode(file_get_contents("uploads/$slug/$user/.grade"), true)['grade'];
+		$tmp = json_decode(file_get_contents("uploads/$slug/$user/.grade"), true);
+		if (!array_key_exists('grade', $tmp)) {
+			totalGradeAndAddPool($tmp);
+			file_put_contents("uploads/$slug/$user/.grade", json_encode($tmp));
+		}
+		$score = $weight * $tmp['grade'];
 		if ($weight == 1 && $score < 1 && array_key_exists('drop', $earned[$grp])) {
 			if ($earned[$grp]['undropped'] > 0) {
 				$earned[$grp]['drop'][] = $score;
@@ -970,9 +983,9 @@ function grade_in_course($user) {
 	
 	$ans = '';
 	if ($f == 0) {
-		$ans .= "<div><strong>Grade</strong>: ".(floor(1000*$e / ($m+$e))/10)."% = ".letterOf($e / ($m+$e), True)."</div>";
+		$ans .= "<div><strong>Grade</strong>: ".(round(1000*$e / ($m+$e))/10)."% = ".letterOf($e / ($m+$e), True)."</div>";
 	} else if ($m + $e != 0) {
-		$ans .= "<div><strong>Grade so far</strong>: ".(floor(1000*$e / ($m+$e))/10)."% = ".letterOf($e / ($m+$e), True)." (with ".round($f*100, 1)."% of the course still to go)</div>";
+		$ans .= "<div><strong>Grade so far</strong>: ".(round(1000*$e / ($m+$e))/10)."% = ".letterOf($e / ($m+$e), True)." (with ".round($f*100, 1)."% of the course still to go)</div>";
 	} else $ans .= "<div>Nothing has been graded yet...</div>";
 	foreach($earned as $grp=>$details) {
 		if (array_key_exists('drop', $details) && count($details['drop']) > 0) {

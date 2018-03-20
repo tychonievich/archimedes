@@ -59,8 +59,18 @@
 		
 		.snapshot { max-width: 50%; display: table; margin: 1ex auto; box-shadow: 0ex 0ex 1ex 0ex rgba(0,0,0,0.25); text-align: center; color: rgba(0,0,0,0.5);}
 		
+		.panel { font-size:66.66666%; margin: 1ex; padding:1ex; border: thin solid; border-radius:2ex; background-color:white; max-width:100%; }
+		pre.highlighted { border: thin solid #f0f0f0; white-space:pre-wrap; padding-right: 1ex; max-width:calc(100%-2ex); margin:0em; }
+		.highlighted .lineno { background:#f0f0f0; padding:0ex 1ex; color:#999999; font-weight:normal; font-style:normal; }
+		.highlighted .comment { font-style: italic; color:#808080; }
+		.highlighted .string { font-weight:bold; color: #008000; }
+		.highlighted .number { color: #0000ff; }
+		.highlighted .keyword { font-weight: bold; color: #000080; }
+
+		
 		/* input, select, option { font-size:100%; } */
 	</style>
+	<script src="codebox.js"></script>
 	<script>//<!--
 /**
  * 
@@ -152,7 +162,7 @@ function docollapse() {
 	}
 }
 	//--></script>
-</head><body onload="dotimes(); docollapse()">
+</head><body onload="dotimes(); docollapse(); highlight();">
 <?php
 
 include "tools.php";
@@ -213,12 +223,10 @@ if ($isfaculty && array_key_exists('extension_decision', $_POST)) {
 		preFeedback("Invalid extension request: no such assignment");
 	} else if (($_POST['extension_decision'] == 'Approve') && (
 		!array_key_exists('due', $_POST)
-		|| strtotime($_POST['due']) === False)) {
-		preFeedback("Invalid extension: missing extension deadline");
-	} else if (($_POST['extension_decision'] == 'Approve') && (
+		|| strtotime($_POST['due']) === False) && (
 		!array_key_exists('late', $_POST)
 		|| !is_array(json_decode($_POST['late'], true)))) {
-		preFeedback("Invalid extension: missing late policy");
+		preFeedback("Invalid extension: approved, but neither late policy nor deadline changed");
 	} else if (($_POST['extension_decision'] != 'Approve') && (
 		!array_key_exists('rejection', $_POST)
 		|| strlen($_POST['rejection']) < 6
@@ -232,11 +240,11 @@ if ($isfaculty && array_key_exists('extension_decision', $_POST)) {
 			if (stripos($_POST['due'], 'now') !== False) {
 				preFeedback("Note: relative times may have a timezone-sized offset incorrectly applied...");
 			}
-			$object = array(
-				'due'=>date('Y-m-d H:i', strtotime($_POST['due']. " America/New_York")), // needed to fix "now+X days" to be non-relative, but for relative times it messes up time zone
-				// 'due'=>strftime('%F %T %Z', strtotime($_POST['due']. " America/New_York")), // needed to fix "now+X days" to be non-relative, but for relative times it messes up time zone
-				'late-policy'=>json_decode($_POST['late'], true),
-			);
+			$object = array();
+			if (array_key_exists('due', $_POST) && strtotime($_POST['due']) !== False)
+				$object['due'] = date('Y-m-d H:i', strtotime($_POST['due']. " America/New_York"));
+			if (array_key_exists('late', $_POST) && is_array(json_decode($_POST['late'], true)))
+				$object['late-policy'] = json_decode($_POST['late'], true);
 			$object['close'] = closeTime($object); // needed to overwrite optional close in assignment itself
 			if (!file_put($extendfile, json_encode($object))) preFeedback("Failed to write .extension file");
 			else {
@@ -305,6 +313,8 @@ if (array_key_exists('extension_request', $_POST)) {
 if (array_key_exists('regrade_request', $_POST)) {
 	if (!array_key_exists('slug', $_POST)) {
 		user_error_msg("Received regrade request without an associated assignment, which shouldn't be possible; please email your professor, describing what you did to get this message, to report this bug.");
+	} else if (strlen($_POST['regrade_request']) < 15) {
+		user_error_msg("Regrade requests should include a description of why they are being requested (i.e., how the original grade was incorrect).");
 	} else {
 		if (file_exists("meta/requests/regrade/$_POST[slug]-$user")) {
 			user_notice_msg("New regrade request replacing old for $_POST[slug].");
@@ -385,7 +395,7 @@ if (array_key_exists('submission', $_FILES)) {
 							user_error_msg("Received <tt>".htmlspecialchars($name)."</tt> but failed to put it into the right location to be tested (not sure why; please report this to your professor).");
 							continue;
 						}
-						user_success_msg("Received <tt>".htmlspecialchars($name)."</tt> for <strong>$slug</strong>.");
+						user_success_msg("Received <tt>".htmlspecialchars($name)."</tt> for <strong>$slug</strong>. File contents as uploaded shown below:" . studentFileTag("uploads/$slug/$user/$name"));
 						if (file_exists($linkdir . '.grade')) unlink($linkdir . '.grade');
 						if (file_exists($linkdir . '.autofeedback')) unlink($linkdir . '.autofeedback');
 						if (!ensure_file("meta/queued/$slug-$user")) {
@@ -437,9 +447,16 @@ if ($isstaff) {
 	}
 	foreach($regrades as $assignment_name => $student_ids) {
 		$n = count($student_ids);
-		echo "<div class='hide-outer hidden'><strong class='hide-header'>$n regrades for $assignment_name</strong><div class='hide-inner'>\n";
-		echo "Visit <a href='grade.php?assignment=$assignment_name&redo=regrade'>the grading site</a> to regrade " . implode(',', $student_ids);
-		echo "</div></div>\n";
+		$s = $n == 1 ? '' : 's';
+		echo "<div class='hide-outer hidden'><strong class='hide-header'>$n regrade$s for $assignment_name</strong><div class='hide-inner'>\n";
+		echo "Visit <a href='grade.php?assignment=$assignment_name&redo=regrade'>the grading site</a> to regrade all or click links below:<ul>";
+		foreach($student_ids as $i=>$sid) {
+			echo '<li>';
+			$grader = rosterEntry($sid); if (array_key_exists('grader', $grader)) $grader = $grader['grader']; else $grader = 'no grader';
+			//if ($i > 0) echo ", ";
+			echo "<a href='grade.php?assignment=$assignment_name&redo=regrade&student=$sid'>$sid</a> (grader <a href='grade.php?assignment=$assignment_name&redo=regrade&grader=$grader'>$grader</a>)</li>";
+		}
+		echo "</ul></div></div>\n";
 	}
 	
 	?>
@@ -450,6 +467,7 @@ if ($isstaff) {
 	<div class="action">
 	Visit the <a href="gradegroup.php">grading group site</a> or <a href="grade.php">the grading site</a>.
 	</div>
+	<?php if ($isself) { ?><div class="action">See a <a href="tafeedback.php">snapshot of student feedback</a> about your office hour help as of <?=prettyTime( filemtime('meta/ta_feedback.json'))?>.</div><?php } ?>
 	
 	<?php
 }
@@ -470,7 +488,7 @@ if ($isfaculty) {
 		foreach($extensions as $student_id => $requests) {
 			$student_name = fullRoster()[$student_id]['name'];
 			echo "<dt>$student_name ($student_id)</dt><dd><dl>";
-			foreach($requests as $assigment_name => $text) {
+			foreach($requests as $assignment_name => $text) {
 				echo "<dt>$assignment_name</dt><dd><pre class='rawtext'>";
 				echo htmlspecialchars($text);
 				echo "</pre>";
@@ -481,11 +499,11 @@ if ($isfaculty) {
 				<p>
 					Rejection reason: <input type='text' name='rejection'/>
 					<input type='submit' name='extension_decision' value="Deny"/>
-				</p><hr/><p>
+				</p><p>
 					New due date+time <input type='text' name='due'/>
-					and late policy (JSON array): <input type='text' name='late' value='[]'/>
+					and late policy (JSON array of ratios of points per day late, like </code>[0.9, 0.8]</code>): <input type='text' name='late'/>
 					<input type='submit' name='extension_decision' value="Approve"/>
-				</p>
+				</p><hr/>
 				</form>
 				<?php
 				echo "</dd>";
@@ -512,10 +530,10 @@ if ($isfaculty) {
 	</form></div>
 
 	<div class="action"><form action='<?=$_SERVER['REQUEST_URI']?>' method='post'>
-	Change the due date+time <input type='text' name='due' title='Example: 2018-02-23 10:00'/>
-	and late policy <input type='text' name='late' value='[]' title='Example: [0.9, 0.8]'/>
-	of <?=assignmentDropdown('extension_assignment')?>
-	for <?=studentDropdown('extension_student')?>
+	Change the due date+time <input type='text' name='due' title='Example: 2018-02-23 10:00'/><br/>
+	and late policy (array of points off per day late) <input type='text' name='late' value='' title='Example: [0.9, 0.8]'/><br/>
+	of assignment <?=assignmentDropdown('extension_assignment')?><br/>
+	for student <?=studentDropdown('extension_student')?>
 	<input type='submit' name='extension_decision' value="Approve"/>
 	</form></div>
 	<?php
@@ -655,22 +673,28 @@ foreach(assignments() as $slug=>$details) {
 		if ($regrade && !$latesubmit) {
 			echo "<div class='hide-outer hidden'><strong class='hide-header'>grade</strong><div class='hide-inner'>\n";
 			display_grade_file("uploads/$slug/$user/.grade");
-
-			?><div class='hide-outer hidden'><strong class='hide-header'>regrade request</strong><div class='hide-inner'>
-			<?php 
-			if (file_exists("meta/requests/regrade/$slug-$user")) {
-				?><p>You submitted the above regrade request <?=prettyTime(filemtime("meta/requests/regrade/$slug-$user"))?>; it is currently waiting for regrader decision.</p><?php
+			
+			if (strpos($slug, 'Lab') === 0) {
+				echo "<div>Lab regrades are handled directly by graders in lab meetings.</div>";
 			} else {
-				?>
-				<p>
-					Although uncommon, we do make mistakes in grading.
-					If you feel one of those mistakes happened to you, please describe why below:
-				</p>
-				<textarea name="regrade_request"></textarea><br/><input type="submit"/>
-				<?php
+
+				?><div class='hide-outer hidden'><strong class='hide-header'>regrade request</strong><div class='hide-inner'>
+				<?php 
+				if (file_exists("meta/requests/regrade/$slug-$user")) {
+					?><p>You submitted the above regrade request <?=prettyTime(filemtime("meta/requests/regrade/$slug-$user"))?>; it is currently waiting for regrader decision.</p><?php
+				} else {
+					?>
+					<p>
+						Although uncommon, we do make mistakes in grading.
+						If you feel one of those mistakes happened to you, please describe why below:
+					</p>
+					<textarea name="regrade_request"></textarea><br/><input type="submit"/>
+					<?php
+				}
+				echo '</div></div>';
 			}
-			echo '</div></div>';
 			echo "</div></div>\n";
+			
 		}
 
 		if ($upload) {
