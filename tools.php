@@ -3,6 +3,11 @@ ini_set("auto_detect_line_endings", true);
 ini_set("auto_detect_line_endings", "America/New_York");
 // date_default_timezone_set
 
+if (!defined('PHP_VERSION_ID') || PHP_VERSION_ID < 50400) {
+	ini_set("magic_quotes_runtime", false);
+}
+
+
 /// The following array grants certain users access to the class even if you upload an empty roster or otherwise mess up the course setup. Feel free to add yourself to the set, but remove those it has now at your own risk.
 $superusers = array(
 	'lat7h'=>array('name'=>'Luther Tychonievich', 'role'=>'Admin'),

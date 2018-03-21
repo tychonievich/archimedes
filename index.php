@@ -278,7 +278,7 @@ if ($isfaculty && array_key_exists('extension_decision', $_POST)) {
 	}
 }
 
-// TO DO: process other uploads, like assignments
+// TO DO: process other uploads, like assignments.json
 
 
 
@@ -296,7 +296,7 @@ if (!$isself) {
 }
 
 // handle user-level uploads and requests
-if (array_key_exists('extension_request', $_POST)) {
+if (array_key_exists('extension_request', $_POST) && (!array_key_exists('submission', $_FILES) || count($_FILES['submission']) == 0)) {
 	if (!array_key_exists('slug', $_POST)) {
 		user_error_msg("Received extension request without an associated assignment, which cannot be processed by this site. Please email your professor directly.");
 	} else {
@@ -310,7 +310,7 @@ if (array_key_exists('extension_request', $_POST)) {
 		}
 	}
 } // end extension request posting
-if (array_key_exists('regrade_request', $_POST)) {
+if (array_key_exists('regrade_request', $_POST) && (!array_key_exists('submission', $_FILES) || count($_FILES['submission']) == 0)) {
 	if (!array_key_exists('slug', $_POST)) {
 		user_error_msg("Received regrade request without an associated assignment, which shouldn't be possible; please email your professor, describing what you did to get this message, to report this bug.");
 	} else if (strlen($_POST['regrade_request']) < 15) {
@@ -342,9 +342,9 @@ if (array_key_exists('submission', $_FILES)) {
 				$details = $extension + $details;
 			}
 			if (array_key_exists('files', $details)) {
-				if (assignmentTime('open', $details) > time()) {
+				if (assignmentTime('open', $details) > time() && !($isstaff && $isself)) {
 					user_error_msg("Tried to upload files for <strong>$slug</strong>, which is not yet open.");
-				} else if (closeTime($details) < time()) {
+				} else if (closeTime($details) < time() && !($isstaff && $isself)) {
 					user_error_msg("Tried to upload files for <strong>$slug</strong>, which has already closed.");
 				} else {
 					$now = date_format(date_create(), "Ymd-His");
@@ -371,7 +371,7 @@ if (array_key_exists('submission', $_FILES)) {
 							continue;
 						}
 						if ($error > UPLOAD_ERR_NO_FILE) {
-							user_error_msg("Failed to receive <tt>".htmlspecialchars($name)."</tt> because of an unexpected problem (upload error number $error). Please report this to your professor.");
+							user_error_msg("Failed to receive <tt>".htmlspecialchars($name)."</tt> because of an unexpected problem (upload error number $error). Please report this by email to your professor, attaching the file you attempted to submit to your email.");
 							continue;
 						}
 						$isok = is_string($details['files']);
@@ -582,7 +582,7 @@ foreach(assignments() as $slug=>$details) {
 	// collect a set of possible user actions for later use in form
 	$latesubmit = False;
 	$regrade = False;
-	$upload = (($status == 'open') || ($status == 'late'));// || $isstaff);
+	$upload = (($status == 'open') || ($status == 'late')) || ($isstaff && $isself);
 	$haveuploaded = False;
 
 
@@ -607,7 +607,7 @@ foreach(assignments() as $slug=>$details) {
 		if (array_key_exists('files', $details)) {
 			if ($status == 'closed') { 
 				echo '<em>You did not submit this assignment.</em>';
-				$latesubmit = true; 
+				$latesubmit = !($isstaff && $isself); 
 			}
 			else if ($status != 'pending') echo 'You have not yet submitted this assignment.';
 		} else {

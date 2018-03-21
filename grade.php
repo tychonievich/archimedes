@@ -6,6 +6,8 @@ $noPre = true; // turn off <pre></pre> stuff
 logInAs();
 if (!$isstaff) die("page restricted to staff");
 
+$issuperuser = ($user == 'lat7h' || $user == 'ez4cc' || $user == 'cap4yf' || $user == 'mg3ta'); // HACK!
+
 if (array_key_exists('addgrade', $_REQUEST)) {
 	// validate payload
 	$grade = json_decode(file_get_contents("php://input"), true);
@@ -198,6 +200,10 @@ input + input { margin-left:0.5ex; }
 		.highlighted .keyword { font-weight: bold; color: #000080; }
 	</style>
 	<script>
+/**
+ * This function is supposed to change all self-sizing panels based on a page resize
+ * It has to be javascript because CSS does not (yet) support it such that page zoom still works
+ */
 function imageresize() {
 	// use of devicePixelRatio does help allow page zoom, but not clear if matters for UHDA devices
 	var panels = document.querySelectorAll('.panel.width');
@@ -212,6 +218,7 @@ function imageresize() {
 window.onresize = imageresize;
 
 
+// ------- BEGIN ------- a full python syntax highlighter as a messy application of regular expressions
 var re_comment = /(#[^\n]*)/;
 var re_string = /((?:\br?b|\bbr)?"""(?:[^"\\]|\\[\s\S]|""?(?=[^"]))*"""|(?:r?b|br)?'''(?:[^'\\]|\\[\s\S]|''?(?=[^']))*'''|(?:r?b|br)?"(?:[^"\\\n]|\\[\s\S])*"|(?:r?b|br)?'(?:[^'\\\n]|\\[\s\S])*')/;
 var re_number = /\b((?:[0-9]*\.[0-9]+(?:[eE][-+][0-9]+)?|[0-9]+\.(?:[eE][-+][0-9]+)?|[0-9]+[eE][-+][0-9]+|0[Bb][01]+|0[Oo][0-7]+|0[Xx][0-9a-fA-F]+|0|[1-9][0-9]*)[jJ]?)\b/;
@@ -220,9 +227,15 @@ var re_keyword = /\b(elif|global|as|if|from|raise|for|except|finally|import|pass
 var tokenizer = new RegExp([re_comment.source, re_string.source, re_number.source, re_keyword.source].join('|'), 'g');
 var token_types = [null, 'comment', 'string', 'number', 'keyword'];
 
+/**
+ * A function I have no idea why isn't built into ECMAScript: an HTML escaper
+ */
 function htmlspecialchars(s) {
 	return s.replace(/\&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;')
 }
+/**
+ * used the regular expressions to add style tags to all contents of <pre><code>
+ */
 function highlight() {
 	var highlight = document.querySelectorAll('pre code');
 	for(var i=0; i<highlight.length; i+=1) {
@@ -247,6 +260,10 @@ function highlight() {
 		code.parentElement.classList.add('highlighted');
 	}
 }
+
+// ------- END ------- a full python syntax highlighter as a messy application of regular expressions
+
+
 function togglewrap() {
 	var s = document.querySelectorAll('.highlighted');
 	for(var i=0; i<s.length; i+=1) {
@@ -268,6 +285,7 @@ function togglelineno() {
 	}
 }
 
+/** Adds hooks to all definition lists so that clicking their terms toggles the visibility of their definitions */
 function setUpCollapses() {
 	var breakdowns = document.querySelectorAll('dt');
 	for(var i=0; i<breakdowns.length; i+=1) {
@@ -283,6 +301,7 @@ function setUpCollapses() {
 	}
 }
 
+/** Actually creates and adds a comment HTML structure */
 function _addcomment(key, value) {
 	var path = key.substring(1).replace(/\n/g,'/');
 	var cssSelector = '[name="'+path+'"]';
@@ -292,27 +311,31 @@ function _addcomment(key, value) {
 		cssSelector = '[name="'+path+'"]';
 		places = document.querySelectorAll(cssSelector); 
 	}
-	console.log(key, path, value, places);
+	// console.log(key, path, value, places);
 	for(var i=0; i<places.length; i+=1) {
 		var p = places[i];
 		var kind = (p.classList.contains('percentage') && !p.classList.contains('set')) ? 'radio' : 'checkbox';
-		var html_front = '<br/><label><input type="'+kind+'" name="'+p.id+'" value=';
+		var html_front = '<label><input type="'+kind+'" name="'+p.id+'" value=';
 		var html_back = '</label>';
 		html_back += ' (<textarea rows="1"></textarea>)';
 		for(var j=0; j<value.length; j+=1) {
 			var isstr = 'string' ==  typeof value[j];
 			var json = JSON.stringify(value[j]);
 			if (!isstr) json = "'"+json.replace(/'/g, '&apos;')+"'";
+			else json = json.replace(/\\\\/g, '\\'); // don't escape backslashes in strings
+			if (p.querySelector('input[value='+json+']') != null) continue; // skip duplicates
 			var html = html_front + json + '/> ' ;
 			if (p.classList.contains('percentage')) html += '&times;'+value[j].ratio+': ';
 			html += htmlspecialchars(isstr ? value[j] : value[j].comment) + html_back;
-			var wrapper = document.createElement('div');
+			var wrapper = document.createElement('p');
 			wrapper.innerHTML = html;
-			if (p.innerHTML.indexOf(wrapper.innerHTML) < 0)
-				p.innerHTML = p.innerHTML + html;
+			var after = p.querySelector(cssSelector + ' > input');
+			after.parentElement.insertBefore(wrapper, after);
 		}
 	}
 }
+
+/** The function called by the "add comment" button, by parsing inputs and invoking _addcomment */
 function addcomment(id) {
 	var el = document.getElementById(id);
 	if (!el.value) { el.classList.add('error'); return; } else el.classList.remove('error');
@@ -338,7 +361,7 @@ function addcomment(id) {
 	return;
 }
 
-
+/** parses the HTML dom to figure out what the actual grade JSON ought to be */
 function _grade(id) {
 	var root = document.getElementById(id);
 	if (root.classList.contains('buckets')) {
@@ -398,6 +421,7 @@ function _grade(id) {
 	}
 }
 
+/** Callback for the "submit grade" button: tell the server, hide the student, and ask for new comments */
 function grade(id) {
 	var ans = {
 		grader:"<?=$user?>", 
@@ -418,6 +442,8 @@ function grade(id) {
 	document.getElementById("table\n"+id).classList.add('done');
 	commentPoll(id.split('\n')[0]);
 }
+
+/** hides the current student's work and moves on to the next one */
 function skip(id, skipped=true) {
 	document.getElementById("table\n"+id).classList.add('done');
 	commentPoll(id.split('\n')[0]);
@@ -429,6 +455,9 @@ function skip(id, skipped=true) {
 		foot.firstElementChild.lastElementChild.innerText = "You skipped some assignments; reload this page to see them.";
 	}
 }
+
+
+/** I wrote this, intentionally, and have no recollection of its purpose. Sorry. */
 function postpone(id, viewer) {
 	var el = document.getElementById("table\n"+id);
 	if (el.classList.contains('viewed')) return;
@@ -451,6 +480,7 @@ function postpone(id, viewer) {
 	commentPoll(id.split('\n')[0]);
 }
 
+/** Sends a request to the comment server, and processes its reply */
 var lastCommentIndex = 0;
 function commentPoll(slug) {
 	var viewing = document.querySelector('table.table-columns:not(.done)');
@@ -460,7 +490,7 @@ function commentPoll(slug) {
 		,function(){ /* console.log(slug +' ' + viewing + ' no new comments'); */ }
 		,function(txt){ 
 			j = JSON.parse(txt);
-			/* console.log(txt); */
+			/*/ console.log("###", txt); /**/
 			if ('.view' in j) {
 				console.log('being viewed: '+slug+"/"+viewing);
 				postpone(slug+'\n'+viewing, j['.view']);
@@ -482,12 +512,17 @@ function commentPoll(slug) {
 		}
 	);
 }
+/** go back to the previous student by removing one .done class marker */
 function unDoneOne() {
 	var v = document.querySelectorAll('table.done');
 	if (v.length > 0) v[v.length-1].classList.remove('done');
 }
 
+/** Send an HTTP request asynchronously, optionally with callbacks for empty and non-empty responses */
 function ajax(payload, qstring, empty=null, response=null) {
+
+	/*/ console.log("### ajax ###", payload, qstring); /**/
+
 	var xhr = new XMLHttpRequest();
 	if (!("withCredentials" in xhr)) {
 		alert('Your browser does not support TLS in XMLHttpRequests; please use a browser based on Gecko or Webkit'); return null;
@@ -750,6 +785,7 @@ function rubricTree($rubric, $comments, $grade, $prefix, $path="", $name="") {
 				}
 				$coms = array_unique(array_merge($general, $coms), SORT_REGULAR);
 			}
+			natcasesort($coms);
 			// the following trusts that all general comments in $grade are in $comments
 			echo "<dt>$bucket[name] ($bucket[score])</dt><dd class='bucket' name='$name/$i' id='$prefix$path\n$i'>";
 			foreach($coms as $j=>$txt) {
@@ -888,7 +924,9 @@ if (array_key_exists('assignment', $_REQUEST)) {
 } else {
 	// show list of assignments (might be slow?)
 	$options = gradeableTree();
-	echo '<h2>Pick an assignment:</h2><ul class="linklist">';
+	echo '<h2>Pick an assignment:</h2>';
+	if ($issuperuser) echo "<p>We have a prototype <a href='merge.php'>comment merge site</a> you are in the initial pilot group to use (with caution... its changes are currently irreversible)</p>";
+	echo '<ul class="linklist">';
 	foreach($options as $slug=>$stats) {
 		if (strlen($slug) == 0 || $slug[0] == '.') continue; // just in case
 		echo "<li><a href='$_SERVER[SCRIPT_NAME]?assignment=$slug'";
@@ -900,7 +938,7 @@ if (array_key_exists('assignment', $_REQUEST)) {
 			echo ">".$stats['graders'][$user]['graded']." / ".($stats['graders'][$user]['graded'] + $stats['graders'][$user]['ungraded'])." graded</a>";
 		}
 		if ($stats['regrade'] > 0) echo "; <span class='regrades'>pending <a href='$_SERVER[SCRIPT_NAME]?assignment=$slug&redo=regrade'>regrades: $stats[regrade]</a></span>";
-		if ($user == 'lat7h' || $user == 'ez4cc' || $user == 'cap4yf' || $user == 'mg3ta') echo "; view <a href='$_SERVER[SCRIPT_NAME]?assignment=$slug&grader=all&redo=own&limit=20'>20 random submissions</a>";
+		if ($issuperuser) echo "; view <a href='$_SERVER[SCRIPT_NAME]?assignment=$slug&grader=all&redo=own&limit=20'>20 random submissions</a>";
 		echo "</li>";
 	}
 	echo '</ul>';
