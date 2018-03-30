@@ -147,6 +147,7 @@ function dotimes() {
 }
 
 function docollapse() {
+	// something here does not work on safari, but I can't seem to figure out what
 	var hiders = document.getElementsByClassName('hide-outer');
 	for(var i=0; i<hiders.length; i+=1) {
 		hiders[i].firstElementChild.onclick = function(e) {

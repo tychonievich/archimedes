@@ -962,7 +962,9 @@ function grade_in_course($user) {
 		$score = $weight * $tmp['grade'];
 		if ($weight == 1 && $score < 1 && array_key_exists('drop', $earned[$grp])) {
 			if ($earned[$grp]['undropped'] > 0) {
+//if ($_SERVER['PHP_AUTH_USER'] == 'lat7h') { preFeedback("drop test $grp"); var_dump($earned[$grp]); leavePre(); }
 				$earned[$grp]['drop'][] = $score;
+				$earned[$grp]['undropped'] -= 1;
 				continue;
 			}
 			foreach($earned[$grp]['drop'] as $i=>$v) {
@@ -996,7 +998,7 @@ function grade_in_course($user) {
 		if (array_key_exists('drop', $details) && count($details['drop']) > 0) {
 			$n = count($details['drop']);
 			if ($n == 1) $n = '';
-			$ans .= "<div><strong>Dropped:</strong> $n lowest $grp score".($n == 1 ? '' : 's')."</div>";
+			$ans .= "<div><strong>Dropped:</strong> $n lowest $grp score".($n == '' ? '' : 's')."</div>";
 		}
 	}
 	if (count($excused) > 0) $ans .= "<div><strong>Excused:</strong> ".implode(", ", $excused)."</div>";
