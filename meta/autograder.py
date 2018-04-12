@@ -232,9 +232,9 @@ if __name__ == '__main__':
 			if obj.status() not in ['running', 'pending']:
 				# print(obj.args, obj.status())
 				PIDWrap.objs.remove(obj)
-				if not os.path.exists(obj.destination):
+				if not os.path.exists(obj.destination) and obj._status != 'finished':
 					log(obj.destination,'not created:',obj._status)
 					with open(obj.destination, 'w') as f:
-						json.dump({'stdout':'code timed out','stderr':'killed testing process with status "'+obj._status+'"'}, f, separators=(',',':'))
+						json.dump({'stdout':'automated feedback system ended prematurely with message "'+obj._status+'"','stderr':'killed testing process with status "'+obj._status+'"'}, f, separators=(',',':'))
 					os.utime(obj.destination, times=(0, 0))
 					

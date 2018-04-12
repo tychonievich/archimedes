@@ -68,6 +68,8 @@
 		.highlighted .keyword { font-weight: bold; color: #000080; }
 
 		
+		.person { border: thin solid white; background-color: rgba(255,255,255,0.5); padding:0.25ex; }
+		
 		/* input, select, option { font-size:100%; } */
 	</style>
 	<script src="codebox.js"></script>
@@ -347,6 +349,7 @@ if (array_key_exists('submission', $_FILES)) {
 					user_error_msg("Tried to upload files for <strong>$slug</strong>, which is not yet open.");
 				} else if (closeTime($details) < time() && !($isstaff && $isself)) {
 					user_error_msg("Tried to upload files for <strong>$slug</strong>, which has already closed.");
+					//if ($_SERVER['PHP_AUTH_USER'] == 'lat7h') { echo "<pre>"; var_dump($details); var_dump(closeTime($details)); var_dump(time()); echo "</pre>"; }
 				} else {
 					$now = date_format(date_create(), "Ymd-His");
 					$realdir = "uploads/$slug/$user/.$now/";
@@ -397,6 +400,17 @@ if (array_key_exists('submission', $_FILES)) {
 							continue;
 						}
 						user_success_msg("Received <tt>".htmlspecialchars($name)."</tt> for <strong>$slug</strong>. File contents as uploaded shown below:" . studentFileTag("uploads/$slug/$user/$name"));
+						
+						if (file_exists($linkdir . '.partners')) { // copies to all partner directories too
+							foreach(explode("\n",trim(file_get_contents($linkdir . '.partners'))) as $u2) {
+								if (strlen($u2) > 3) {
+									$into = "uploads/$slug/$u2/";
+									if (!file_exists($into)) { umask(0); mkdir($into, 0777, true); }
+									link($realdir . $name, $into . $name);
+								}
+							}
+						}
+						
 						if (file_exists($linkdir . '.grade')) unlink($linkdir . '.grade');
 						if (file_exists($linkdir . '.autofeedback')) unlink($linkdir . '.autofeedback');
 						if (!ensure_file("meta/queued/$slug-$user")) {
@@ -466,7 +480,9 @@ if ($isstaff) {
 	<input type='submit' value="Change Identity"/>
 	</form></div>
 	<div class="action">
-	Visit the <a href="gradegroup.php">grading group site</a> or <a href="grade.php">the grading site</a>.
+	Visit the <a href="gradegroup.php">grading group site</a>,
+	the <a href="partners.php">project partner site</a>,
+	or the <a href="grade.php">the grading site</a>.
 	</div>
 	<?php if ($isself) { ?><div class="action">See a <a href="tafeedback.php">snapshot of student feedback</a> about your office hour help as of <?=prettyTime( filemtime('meta/ta_feedback.json'))?>.</div><?php } ?>
 	
@@ -537,6 +553,11 @@ if ($isfaculty) {
 	for student <?=studentDropdown('extension_student')?>
 	<input type='submit' name='extension_decision' value="Approve"/>
 	</form></div>
+	
+	<div class="action">
+		<a href="https://archimedes.cs.virginia.edu/cs1110/gradesheet.php">View all students grades</a> (takes about 10 seconds to generate report; be patient)
+	</div>
+	
 	<?php
 }
 
@@ -565,10 +586,14 @@ foreach(assignments() as $slug=>$details) {
 	$status = ((!$due || $open > time()) ? "pending" : ($due > time() ? "open" : ($close > time() ? "late" : "closed")));
 	if ($notmine) echo "<div class='assignment pending'>non-credit exercise: ";
 	else echo "<div class='assignment $status'>";
-	if (/*($notmine || $isstaff && $isself || $status != "pending") &&*/ array_key_exists('title', $details)) 
+	if (array_key_exists('writeup', $details))
+		echo "<a href='//cs1110.cs.virginia.edu/$details[writeup]'>";
+	else if (/*($notmine || $isstaff && $isself || $status != "pending") &&*/ array_key_exists('title', $details)) 
 		echo strtolower("<a href='//cs1110.cs.virginia.edu/$slug-$details[title].html'>");
 	echo "<strong>$slug</strong> ";
-	if (/*($notmine || $isstaff && $isself || $status != "pending") &&*/ array_key_exists('title', $details)) 
+	if (array_key_exists('writeup', $details))
+		echo "</a>";
+	else if (/*($notmine || $isstaff && $isself || $status != "pending") &&*/ array_key_exists('title', $details)) 
 		echo "$details[title]</a> ";
 	if ($notmine) {}
 	else if ($status == 'pending') echo "opens ".prettyTime($open)."\n";
@@ -604,11 +629,23 @@ foreach(assignments() as $slug=>$details) {
 			}
 		}
 	}
+	if (file_exists("uploads/$slug/$user/.partners")) {
+		$partners = array();
+		foreach(explode("\n",trim(file_get_contents("uploads/$slug/$user/.partners"))) as $u2) {
+			if ($u2 != $user) {
+				$whom = rosterEntry($u2);
+				if ($whom) $partners[] = "$whom[name] ($u2)";
+			}
+		}
+		if (count($partners) > 0) {
+			echo "<div>Partnered with <span class='person'>".implode("</span> and <span class='person'>", $partners)."</span></div>";
+		}
+	}
 	if (!$haveuploaded) {
 		if (array_key_exists('files', $details)) {
 			if ($status == 'closed') { 
 				echo '<em>You did not submit this assignment.</em>';
-				$latesubmit = !($isstaff && $isself); 
+				$latesubmit = !($isstaff && $isself) && !($details['group'] == 'Lab'); 
 			}
 			else if ($status != 'pending') echo 'You have not yet submitted this assignment.';
 		} else {

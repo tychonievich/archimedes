@@ -13,6 +13,7 @@ $superusers = array(
 	'lat7h'=>array('name'=>'Luther Tychonievich', 'role'=>'Admin'),
 	'up3f'=>array('name'=>'Upsorn Praphamontripong', 'role'=>'Admin'),
 	'cd9au'=>array('name'=>'Craig Dill', 'role'=>'Admin'),
+	'njb2b'=>array('name'=>'Nathan Brunelle', 'role'=>'Admin'),
 //	'tbh3f'=>array('name'=>'Tom Horton', 'role'=>'Admin'),
 //	'mss2x'=>array('name'=>'Mark Sherriff', 'role'=>'Admin'),
 	'no grader'=>array('name'=>'no grader assigned', 'role'=>'Teaching Assistant'),
@@ -397,6 +398,7 @@ function logInAs($compid=false, $initial=true) {
  */
 function assignmentTime($key, $details) {
 	if (!array_key_exists($key, $details)) return False;
+	if (is_int($details[$key]) && $details[$key] > 1000000000) return $details[$key];
 	return strtotime($details[$key] . " America/New_York");
 }
 /**
@@ -624,6 +626,7 @@ function user_success_msg($msg) {
 
 function closeTime($assignmentDetails) {
 	$close = assignmentTime('close', $assignmentDetails);
+	//if ($_SERVER['PHP_AUTH_USER'] == 'lat7h') { echo "<pre>"; var_dump($assignmentDetails); var_dump($close); echo "</pre>"; }
 	if ($close === False) {
 		$close = assignmentTime('due', $assignmentDetails);
 		if (array_key_exists('late-policy', $assignmentDetails)) {
@@ -950,7 +953,7 @@ function grade_in_course($user) {
 			continue;
 		}
 		if (!file_exists("uploads/$slug/$user/.grade")) {
-			if ($closed && !file_exists("uploads/$slug/$user/")) $earned[$grp]['missed'] += $weight;
+			if ($closed && !file_exists("uploads/$slug/$user/") && $grp != 'Exam') $earned[$grp]['missed'] += $weight;
 			else $earned[$grp]['future'] += $weight;
 			continue;
 		}
