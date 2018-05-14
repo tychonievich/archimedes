@@ -69,6 +69,15 @@
 
 		
 		.person { border: thin solid white; background-color: rgba(255,255,255,0.5); padding:0.25ex; }
+
+		dd table { border-collapse: collapse; width:100%; }
+		dd table td { padding: 1ex; }
+		dd table tr:nth-child(2n) { background-color:rgba(255,127,0,0.125); }
+
+		dd.collapsed { display:none; }
+		dt.collapsed:before { content: "+ "; }
+		dt.collapsed:after { content: " …"; }
+		dt.collapsed { font-style: italic; }
 		
 		/* input, select, option { font-size:100%; } */
 	</style>
@@ -162,6 +171,20 @@ function docollapse() {
 				parent.classList.add('hidden');
 			}
 		}
+	}
+	var breakdowns = document.querySelectorAll('table + dl dt');
+	for(var i=0; i<breakdowns.length; i+=1) {
+		breakdowns[i].onclick = function() {
+			if (this.classList.contains('collapsed')) {
+				this.nextElementSibling.classList.remove('collapsed');
+				this.classList.remove('collapsed');
+			} else {
+				this.nextElementSibling.classList.add('collapsed');
+				this.classList.add('collapsed');
+			}
+		}
+		breakdowns[i].nextElementSibling.classList.add('collapsed');
+		breakdowns[i].classList.add('collapsed');
 	}
 }
 	//--></script>
@@ -280,6 +303,55 @@ if ($isfaculty && array_key_exists('extension_decision', $_POST)) {
 		}
 	}
 }
+// If faculty and sent exemption decision, accept it
+if ($isfaculty && array_key_exists('exemption_decision', $_POST)) {
+	if (!array_key_exists('exemption_student', $_POST) 
+	|| !array_key_exists($_POST['exemption_student'], fullRoster())) {
+		preFeedback("Invalid exemption request: no such student");
+	} else if (!array_key_exists('exemption_assignment', $_POST) 
+	|| !array_key_exists($_POST['exemption_assignment'], assignments())) {
+		preFeedback("Invalid exemption request: no such assignment");
+	} else {
+		preFeedback("Processing exemption request $_POST[exemption_assignment]/$_POST[exemption_student] (decision was $_POST[exemption_decision])");
+		$exemptfile = "uploads/$_POST[exemption_assignment]/$_POST[exemption_student]/.excused";
+		if ($_POST['exemption_decision'] == 'Approve') {
+			file_append($exemptfile, "Excused over by web interface at ".date('Y-m-d H:i')." by $me[name] ($user)\n");
+		} else {
+			if (file_exists($exemptfile)) unlink($exemptfile); // FIX ME: leaves no log of exemption ever being attempted
+		}
+	}
+}
+
+
+if (array_key_exists('partner_imbalance', $_POST)) {
+	if (array_key_exists('project_1', $_POST) && file_exists("uploads/Project/$_POST[project_1]")) {
+		if (is_numeric($_POST['mult_1']) && strlen($_POST['reason_1']) > 1) {
+			file_put_contents(
+				"uploads/Project/$_POST[project_1]/.adjustment",
+				json_encode(array("mult"=>floatval($_POST['mult_1']),"comments"=>$_POST['reason_1']))
+			);
+			preFeedback("Adjusted ".$_POST['project_1']." by ".$_POST['mult_1']);
+		} else
+			preFeedback("no feedback for primary partner $_POST[project_1]");
+		if (is_numeric($_POST['mult_2']) && strlen($_POST['reason_2']) > 1) {
+			if (file_exists("uploads/Project/$_POST[project_1]/.partners")) {
+				$parts = explode("\n", file_get_contents("uploads/Project/$_POST[project_1]/.partners"));
+				if (count($parts) != 1 || $parts[0] == "$_POST[project_1]")
+					preFeedback("ERROR: ambiguous partner for $_POST[project_1]; please specify explicitly");
+				else {
+					file_put_contents(
+						"uploads/Project/$parts[0]/.adjustment",
+						json_encode(array("mult"=>floatval($_POST['mult_2']),"comments"=>$_POST['reason_2']))
+					);
+					preFeedback("Adjusted ".$parts[0]." by ".$_POST['mult_2']);
+				}
+			} else 
+				preFeedback("ERROR: no partner of $_POST[project_1] found");
+		} else
+			preFeedback("no feedback for partner of $_POST[project_1]");
+	}
+}
+
 
 // TO DO: process other uploads, like assignments.json
 
@@ -313,7 +385,26 @@ if (array_key_exists('extension_request', $_POST) && (!array_key_exists('submiss
 		}
 	}
 } // end extension request posting
-if (array_key_exists('regrade_request', $_POST) && (!array_key_exists('submission', $_FILES) || count($_FILES['submission']) == 0)) {
+if (array_key_exists("make_live", $_POST)) {
+	if (!preg_match('@^uploads/[^/]+/'.$user.'/.2[^/]*/[^/]*$@', $_POST['make_live'])) {
+		user_error_msg("Received roll-back request for a different user.");
+	} else if (!file_exists($_POST['make_live'])) {
+		user_error_msg("Received roll-back request to a non-existent file.");
+	} else {
+		$fname = basename($_POST['make_live']);
+		$dname = dirname(dirname($_POST['make_live']));
+		$slug = basename(dirname($dname));
+		if (file_exists("$dname/$fname")) unlink("$dname/$fname");
+		link($_POST['make_live'], "$dname/$fname");
+		ensure_file("meta/queued/$slug-$user");
+		if (file_exists("$dname/.grade")) {
+			user_success_msg("roll-back completed: <tt>$dname/$fname</tt> now aliases <tt>$_POST[make_live]</tt>, and the autograder has been queued to review <tt>meta/queued/$slug-$user</tt>. Note, however, that this was previous graded; we advise <a href='grade.php?student=$user&assignment=$slug'>manually regrading</a>.");
+		} else {
+			user_success_msg("roll-back completed: <tt>$dname/$fname</tt> now aliases <tt>$_POST[make_live]</tt>, and the autograder has been queued to review <tt>meta/queued/$slug-$user</tt>");
+		}
+	}
+} // end roll-back posting
+else if (array_key_exists('regrade_request', $_POST) && (!array_key_exists('submission', $_FILES) || count($_FILES['submission']) == 0)) {
 	if (!array_key_exists('slug', $_POST)) {
 		user_error_msg("Received regrade request without an associated assignment, which shouldn't be possible; please email your professor, describing what you did to get this message, to report this bug.");
 	} else if (strlen($_POST['regrade_request']) < 15) {
@@ -329,7 +420,7 @@ if (array_key_exists('regrade_request', $_POST) && (!array_key_exists('submissio
 		}
 	}
 } // end regrade request posting
-if (array_key_exists('submission', $_FILES)) {
+else if (array_key_exists('submission', $_FILES)) {
 	if (count($_FILES['submission']['error']) == 1 && $_FILES['submission']['error'] == UPLOAD_ERR_NO_FILE) {
 		user_error_msg("Upload action received, but no file was sent by your browser. Please try again.");
 	} else if (!array_key_exists('slug', $_POST)) {
@@ -406,6 +497,7 @@ if (array_key_exists('submission', $_FILES)) {
 								if (strlen($u2) > 3) {
 									$into = "uploads/$slug/$u2/";
 									if (!file_exists($into)) { umask(0); mkdir($into, 0777, true); }
+									if (file_exists($into.$name)) { unlink($into.$name); }
 									link($realdir . $name, $into . $name);
 								}
 							}
@@ -433,7 +525,6 @@ if (array_key_exists('submission', $_FILES)) {
 else if (array_key_exists('CONTENT_LENGTH', $_SERVER) && floatval($_SERVER['CONTENT_LENGTH']) > (1<<27)) {
 	user_error_msg("You appear to have attempted to send some very large file, which our server's security settings caused us not to receive.");
 }
-
 
 
 // display extra information, if applicable
@@ -553,9 +644,32 @@ if ($isfaculty) {
 	for student <?=studentDropdown('extension_student')?>
 	<input type='submit' name='extension_decision' value="Approve"/>
 	</form></div>
+
+	<div class="action"><form action='<?=$_SERVER['REQUEST_URI']?>' method='post'>
+	Excuse assignment <?=assignmentDropdown('exemption_assignment')?><br/>
+	for student <?=studentDropdown('exemption_student')?>
+	<input type='submit' name='exemption_decision' value="Approve"/>
+	</form></div>
 	
 	<div class="action">
 		<a href="https://archimedes.cs.virginia.edu/cs1110/gradesheet.php">View all students grades</a> (takes about 10 seconds to generate report; be patient)
+	</div>
+	
+	<div class="action">
+		<datalist id='project_reasons'>
+			<option>Parter evals, staff observation, and/or code authorship algorithms suggest you did almost all of the work</option>
+			<option>Parter evals, staff observation, and/or code authorship algorithms suggest you did most of the work</option>
+			<option>Parter evals, staff observation, and/or code authorship algorithms suggest you did little of the work</option>
+			<option>Parter evals, staff observation, and/or code authorship algorithms suggest you did almost none of the work</option>
+		</datalist>
+		<form action='<?=$_SERVER['REQUEST_URI']?>' method='post'>
+		Give <?=studentDropdown('project_1')?>
+		a multiplier of &times;<input type='text' name='mult_1' value=''/>
+		with explanation <input type='text' name='reason_1' value='' list='project_reasons'/><br/>
+		Give their partner a multiplier of &times;<input type='text' name='mult_2' value=''/>
+		with explanation <input type='text' name='reason_2' value='' list='project_reasons'/><br/>
+		<input type='submit' name='partner_imbalance' value="Adjust grades"/>
+	</form>
 	</div>
 	
 	<?php
@@ -629,6 +743,20 @@ foreach(assignments() as $slug=>$details) {
 			}
 		}
 	}
+	if ($due == $close && array_key_exists('files', $details) && $details['group'] == 'Project') { // HACK! Move to assignments.json, perhaps as "late message":"..."
+		echo "<p class='big notice'>";
+		if ($status == 'open' or $status == 'pending') {
+			echo "Late submissions of this assignment will <strong>not</strong> be permitted. You or your partner <strong>must</strong> submit on time to receive any credit on this assignment.";
+		} else {
+			echo "Late submissions of this assignment are not permitted. ";
+			if (strpos($slug, 'heckpoint') > 0 && !$haveuploaded) {
+				echo "If you missed the deadline, see your grader in lab to get feedback on your game progress.";
+			}
+		}
+		echo "</p>";
+	}
+	
+
 	if (file_exists("uploads/$slug/$user/.partners")) {
 		$partners = array();
 		foreach(explode("\n",trim(file_get_contents("uploads/$slug/$user/.partners"))) as $u2) {
@@ -751,8 +879,49 @@ foreach(assignments() as $slug=>$details) {
 			}
 		}
 		
+		if ($isfaculty) {
+			$subs = glob("uploads/$slug/$user/.2*");
+			$sub_cnt = count($subs);
+			if ($sub_cnt > 0) {
+				sort($subs);
+				echo "<div class='hide-outer hidden'><strong class='hide-header'>$sub_cnt submissions (faculty view only; excludes by-partner submission)</strong><div class='hide-inner'>";
+				echo "<ol>";
+				foreach($subs as $when) {
+					$live = array();
+					$dead = array();
+					foreach(glob("$when/*") as $f) {
+						$orig = fileinode($f);
+						$curr = fileinode("uploads/$slug/$user/".basename($f));
+						if ($orig !== FALSE && $orig == $curr) $live[] = basename($f);
+						else $dead[] = $f;
+					}
+					$when = substr(basename($when),1);
+					echo "<li>".prettyTime(DateTime::createFromFormat('Ymd-His',$when)->getTimestamp());
+					if (count($dead)) {
+						 echo " (click to restore old copy of ";
+						 foreach($dead as $i=>$path) {
+							 if ($i != 0) echo " and ";
+							 echo "<button name='make_live' value='$path'>".basename($path)."</button>";
+						 }
+						 echo ")";
+					}
+					if (count($live)) {
+						 echo " (current copy of <tt>".implode('</tt> and <tt>', $live)."</tt>)";
+					}
+					echo "</li>";
+					
+				}
+				echo "</ol>";
+				echo "</div></div>";
+			}
+		}
+		
 		echo "</form>\n";
 	}
+	if ($slug == 'Project') {
+		echo 'We also encourage (but do not require) submitting a <a href="https://docs.google.com/forms/d/e/1FAIpQLSclqTmYTrGNerC158UMlN5A2jgbA7xquFpAlnQ4p_F1MGlOAw/viewform?usp=sf_link">partner evaluation</a>, which will be factored into overall grading';
+	}
+		
 	echo "</div>\n";
 }
 

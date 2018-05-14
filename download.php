@@ -43,6 +43,7 @@ if (is_dir($path)) {
 							$hide[] = basename($fname);
 						}
 					}
+
 				}
 				if (array_key_exists('tester', $a)) {
 					foreach(glob("meta/support/$a[tester]") as $fname) {

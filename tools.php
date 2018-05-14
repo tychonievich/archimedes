@@ -372,8 +372,10 @@ function logInAs($compid=false, $initial=true) {
 	}
 
 	if (($me = rosterEntry($user)) !== False) {
-		$isfaculty = $initial && hasFacultyRole($me);
-		$isstaff = hasStaffRole($me);
+		if ($initial) {
+			$isfaculty = hasFacultyRole($me);
+			$isstaff = hasStaffRole($me);
+		}
 	} else {
 		preFeedback("ERROR: user $user is not in our roster.");
 		leavePre();
@@ -874,7 +876,8 @@ function studentFileTag($path, $classes='left') {
 		$finfo = new finfo(FILEINFO_MIME);
 		$mime = $finfo->file($path);
 		if (stripos($mime, 'image') !== FALSE) {
-			return "<a href='$link' target='_blank'><img class='$classes width height' src='$link'/></a>";
+			return "<a href='$link' target='_blank'><img class='$classes width height' src='$link'/></a><br/><input type='button' value='toggle image visibility' onclick='e=this.previousSibling.previousSibling; e.setAttribute(\"style\", e.getAttribute(\"style\") ? \"\" : \"display:none\")'/>";
+			//	return "<a href='$link' target='_blank'><img class='$classes width height' src='$link'/></a>";
 		} else if (stripos($mime, 'text') !== FALSE) {
 			return "<div class='$classes width'>File <a href='$link' target='_blank'><tt>$title</tt></a>:<pre><code>" . htmlspecialchars(file_get_contents($path)) . "</code></pre></div>";
 		} else if (is_dir($path)) {
@@ -913,8 +916,10 @@ function applies_to($me, $task) {
 	return True;
 }
 
+// FIX ME: refactor to use grade_map
 function grade_in_course($user) {
 	$earned = array();
+	$detailed = array();
 	$cg = coursegrade();
 	$weight_denom = 0;
 	$me = rosterEntry($user);
@@ -930,6 +935,7 @@ function grade_in_course($user) {
 	$ungrouped = array();
 	$excused = array();
 	$zero = array();
+	$special_notes = array(); // HACK: consider refactoring
 	foreach(assignments() as $slug=>$details) {
 		if (!array_key_exists('group', $details)) {
 			$ungrouped[] = $slug;
@@ -947,13 +953,13 @@ function grade_in_course($user) {
 		}
 		$weight = 1;
 		if (array_key_exists('weight', $details)) $weight = $details['weight'];
-		$closed = closeTime($details) < time();
+		$closed = closeTime($details) < time(); // this makes past-due appear 0 even if still being graded
 		if ($weight == 0 && $closed) {
 			$zero[] = $slug;
 			continue;
 		}
 		if (!file_exists("uploads/$slug/$user/.grade")) {
-			if ($closed && !file_exists("uploads/$slug/$user/") && $grp != 'Exam') $earned[$grp]['missed'] += $weight;
+			if ($closed /*&& !file_exists("uploads/$slug/$user/") && $grp != 'Exam'*/) $earned[$grp]['missed'] += $weight;
 			else $earned[$grp]['future'] += $weight;
 			continue;
 		}
@@ -961,6 +967,16 @@ function grade_in_course($user) {
 		if (!array_key_exists('grade', $tmp)) {
 			totalGradeAndAddPool($tmp);
 			file_put_contents("uploads/$slug/$user/.grade", json_encode($tmp));
+		}
+		if (file_exists("uploads/$slug/$user/.adjustment")) { // HACK: should probably refactor...
+			$adj = json_decode(file_get_contents("uploads/$slug/$user/.adjustment"), true);
+			$cap = 1;
+			if (array_key_exists('extra', $adj)) $cap = $adj['extra'];
+			$ng = min($adj['mult']*$tmp['grade'], $cap);
+			if (($ng != $tmp['grade'])) {
+				$extra_notes[$slug] = array(($ng-$tmp['grade'])*$weight, $adj['comments']);
+				$tmp['grade'] = $ng;
+			}
 		}
 		$score = $weight * $tmp['grade'];
 		if ($weight == 1 && $score < 1 && array_key_exists('drop', $earned[$grp])) {
@@ -979,6 +995,8 @@ function grade_in_course($user) {
 		}
 		$earned[$grp]['earned'] += $score;
 		if ($score < $weight) $earned[$grp]['missed'] += $weight - $score;
+		if (!array_key_exists($grp, $detailed)) $detailed[$grp] = array();
+		$detailed[$grp][$slug] = array('earned'=>$score, 'outof'=>$weight);
 	}
 
 	$m = 0; $e = 0;
@@ -992,10 +1010,10 @@ function grade_in_course($user) {
 	$f = 1-$m-$e;
 	
 	$ans = '';
-	if ($f == 0) {
-		$ans .= "<div><strong>Grade</strong>: ".(round(1000*$e / ($m+$e))/10)."% = ".letterOf($e / ($m+$e), True)."</div>";
+	if ($f < 0.001) {
+		$ans .= "<div><strong>Grade</strong>: ".(round(1000000*$e / ($m+$e))/10000)."% = ".letterOf($e / ($m+$e), True)."</div>";
 	} else if ($m + $e != 0) {
-		$ans .= "<div><strong>Grade so far</strong>: ".(round(1000*$e / ($m+$e))/10)."% = ".letterOf($e / ($m+$e), True)." (with ".round($f*100, 1)."% of the course still to go)</div>";
+		$ans .= "<div><strong>Grade so far</strong>: ".(round(1000000*$e / ($m+$e))/10000)."% = ".letterOf($e / ($m+$e), True)." (with ".round($f*100, 1)."% of the course still to go)</div>";
 	} else $ans .= "<div>Nothing has been graded yet...</div>";
 	foreach($earned as $grp=>$details) {
 		if (array_key_exists('drop', $details) && count($details['drop']) > 0) {
@@ -1007,7 +1025,15 @@ function grade_in_course($user) {
 	if (count($excused) > 0) $ans .= "<div><strong>Excused:</strong> ".implode(", ", $excused)."</div>";
 	if (count($ungrouped) > 0) $ans .= "<div><strong>Not configured:</strong> ".implode(", ", $ungrouped)." (this usually means your professor has not properly set up this site)</div>";
 	if (count($zero) > 0) $ans .= "<div title='Elided items are those given 0 weight per course grading policy'><strong>Non-credit exercises:</strong> ".implode(", ", $zero)."</div>";
-	
+	if (count($extra_notes) > 0) {
+		$ans .= "<div><strong>Grade adjustments:</strong>";
+		foreach($extra_notes as $slug=>$notes) {
+			$diff=$notes[0];
+			if ($diff < 0) $ans .= '<br/>&nbsp; &nbsp; &minus;'.(-$diff)." on $slug; $notes[1]";
+			else $ans .= '<br/>+'.($diff)." on $slug; $notes[1]";
+		}
+		$ans .= "</div>";
+	}
 	if ($f < 1) {
 		$ans .= "<table class='nopad' style='width:100%'><tbody><tr><td><strong>Progress:</strong>&nbsp;</td><td width='100%'>";
 		$ans .= "<div class='xp-bar'>";
@@ -1018,7 +1044,184 @@ function grade_in_course($user) {
 		$ans .= "</td></tr></tbody></table>";
 	}
 	
+	$ans .= "<dl>"; 
+	foreach($detailed as $grp=>$finished) {
+		$possible = $earned[$grp]['missed'] + $earned[$grp]['earned'] + $earned[$grp]['future'];
+		if ($possible > 0) {
+			$e = $earned[$grp]['earned']*100*$earned[$grp]['weight'] / $possible;
+		} else { $e = 0; }
+		
+
+		$ans .= "<dt>$grp ($e of ".(100*$earned[$grp]['weight'])."%)</dt><dd><table><tr><th>Task</th><th>Got</th><th>Of</th><th>Percent</th></tr>";
+		foreach($finished as $task=>$did) {
+			$ans .= "<tr><td>$task</td><td>$did[earned]</td><td>$did[outof]</td><td>".$did['earned']*100/$did['outof']."%</td></tr>";
+		}
+		$ans .= "</table></dd>";
+	}
+	$ans .= "</dl>";
+
 	return $ans;
 }
+
+
+$_grade_map = null;
+/**
+ * Creates the non-user-specific parts of the grade_map()
+ */
+function base_grade_map() {
+	global $_grade_map;
+	if ($_grade_map === null) {
+		$_grade_map = array();
+		$cg = coursegrade();
+		foreach($cg['weights'] as $grp=>$weight) {
+			$_grade_map[$grp] = array("weight"=>$weight,"earned"=>0,"missed"=>0,"future"=>0,"items"=>array());
+		}
+		foreach($cg['drops'] as $grp=>$count) {
+			$_grade_map[$grp]['drop'] = $count;
+		}
+		foreach(assignments() as $slug=>$details) {
+			$grp = $details['group'];
+			if (!array_key_exists($grp, $_grade_map)) continue; // $_grade_map[$grp] = array("weight"=>0,"items"=>array());
+			if (!array_key_exists('weight', $details)) $details['weight'] = 1;
+			if (time() < closeTime($details)) {
+				$_grade_map[$grp]['future'] += $details['weight'];
+				$_grade_map[$grp]['items'][$slug] = array("weight"=>0,"notes"=>"still open");
+			} else {
+				$_grade_map[$grp]['items'][$slug] = array("weight"=>$details['weight']);
+			}
+		}
+	}
+	$ans = $_grade_map;
+	return $ans;
+}
+/**
+ * For a given user, computes the full grade so far:
+{
+    "earned": 3.866,
+    "future": 1.26,
+    "missed": 8.224,
+    "grade": 0.31976840363937,
+    "letter": "F",
+    "details": {
+        "Exam": {
+            "weight": 0.5,
+            "earned": 2.115,
+            "missed": 1.215,
+            "future": 0,
+            "items": {
+                "Exam 1": {
+                    "weight": 1,
+                    "score": 0.98
+                },
+                "Exam 2": {
+                    "weight": 1,
+                    "notes": "no submission",
+                    "score": 0
+                },
+                "Exam 3": {
+                    "weight": 1.33,
+                    "score": 0.85338345864662
+                }
+            }
+        },
+        "PA": { ... }
+}
+ * Other elements:
+ * "drop":int
+ * "drooped":[int, int, ...] // array of missed points excused
+ * 
+ * Notes:
+ * no submission (score 0, normal weight)
+ * excused (weight 0)
+ * ungraded (submitted but no grade recorded yet; weight 0)
+ * extended (due, but this student has an extension; weight 0)
+ * still open (not yet due; weight 0)
+ * whatever is written in an .adjustments file (normal weight)
+ */
+function grade_map($user) {
+	$ans = base_grade_map();
+	foreach($ans as $k=>&$v) {
+		$earned = 0;
+		$possible = 0;
+		$droppers = array(); if (array_key_exists('drop',$v)) while(count($droppers) < $v['drop']) $droppers[] = 0;
+		foreach($v['items'] as $slug=>&$results) {
+			if ($results['weight'] == 0) continue;
+			if (file_exists("uploads/$slug/$user/.extension")) {
+				$details = assignments()[$slug] + json_decode(file_get_contents("uploads/$slug/$user/.extension"), TRUE);
+				if (time() < closeTime($details)) {
+					$results['notes'] = 'extended';
+					$v['future'] += $results['weight'];
+					$results['weight'] = 0;
+					continue;
+				}
+			}
+			if (!file_exists("uploads/$slug/$user")) {
+				$results['notes'] = 'no submission'; $results['score'] = 0;
+
+				$earn = $results['weight']*$results['score'];
+				$miss = $results['weight']*(1-$results['score']);
+				if (count($droppers) && $miss > $droppers[0]) {
+					$diff = $miss - $dropers[0];
+					$droppers[0] = $miss;
+					$earn += $diff;
+					$miss -= $diff;
+					rsort($droppers);
+				}
+				$v['earned'] += $earn;
+				$v['missed'] += $miss;
+				
+			} else if (file_exists("uploads/$slug/$user/.excused")) {
+				$results['notes'] = 'excused'; $results['weight'] = 0; 
+			} else if (file_exists("uploads/$slug/$user/.grade")) { 
+				$got = json_decode(file_get_contents("uploads/$slug/$user/.grade"), true);
+				if (!array_key_exists('grade', $got)) {
+					totalGradeAndAddPool($got);
+					file_put_contents("uploads/$slug/$user/.grade", json_encode($got));
+				}
+				if (file_exists("uploads/$slug/$user/.adjustment")) {
+					$adj = json_decode(file_get_contents("uploads/$slug/$user/.adjustment"), true);
+					$cap = 1;
+					if (array_key_exists('extra', $adj)) $cap = $adj['extra'];
+					$ng = min($adj['mult']*$got['grade'], $cap);
+					if (($ng != $got['grade'])) {
+						$results['notes'] = $adj['comments'];
+						$got['grade'] = $ng;
+					}
+				}
+				$results['score'] = $got['grade'];
+				$earn = $results['weight']*$results['score'];
+				$miss = $results['weight']*(1-$results['score']);
+				if (count($droppers) && $miss > $droppers[0]) {
+					$diff = $miss - $droppers[0];
+					$droppers[0] = $miss;
+					$earn += $diff;
+					$miss -= $diff;
+					rsort($droppers);
+				}
+				$v['earned'] += $earn;
+				$v['missed'] += $miss;
+			} else {
+				$v['future'] += $results['weight'];
+				$results['notes'] = 'ungraded'; $results['weight'] = 0;
+			}
+		}
+		if (array_key_exists('drop', $v)) $v['drop_worth'] = $droppers;
+	}
+	$e = 0; $m = 0; $f = 0;
+	foreach($ans as $g=>$d) {
+		$e += $d['weight'] * $d['earned'];
+		$m += $d['weight'] * $d['missed'];
+		$f += $d['weight'] * $d['future'];
+	}
+	return array(
+		'earned'=>$e,
+		'future'=>$f,
+		'missed'=>$m,
+		'grade'=>($e + $m > 0 ? $e / ($e + $m) : 0),
+		'letter'=>($e + $m > 0 ? letterOf($e / ($e + $m), True) : 'F'),
+		'details'=>$ans
+	);
+}
+
 
 ?>
