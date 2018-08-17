@@ -1,15 +1,15 @@
 # Overview
 
 When first designed, this was a webpage where students could upload files.
-They we added autograding feedback, then rapid TA view of submissions,
-then added rubrics and more complicated rubrics and... it keeps getting bigger.
+Then we added autograding feedback, then rapid TA view of submissions,
+then rubrics, and more complicated rubrics, and... it keeps getting bigger.
 This version has a submission system, gradebook, and an extension and regrade request system.
 It will likely expand more over time.
 
 The name "Archimedes" is not carefully selected.
-When our sysadmins get a group of new computers, they give them names from some list of names
-(such as ancient Greek mathematicians)
-and when I asked for a server for an early version of this I was given a computer named "Archimedes".
+When I asked our sysadmins for a server to run the second version of this on
+they gave me one from a rack of computers another faculty member had recently had,
+and the former faculty member (I don't even know who they were) had named the computer in question "Archimedes".
 
 
 # Directory Structure
