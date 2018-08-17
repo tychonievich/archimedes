@@ -56,7 +56,7 @@ function rosterEntry($id, $check=false) {
 		$me['id'] = $id;
 	}
 	if (!$me && array_key_exists($id, $superusers)) {
-		$me = $superusers[$me];
+		$me = $superusers[$id];
 		$me['id'] = $id;
 	}
 	return $me;
