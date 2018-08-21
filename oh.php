@@ -49,7 +49,7 @@ $assignments = json_decode(file_get_contents('meta/assignments.json'), true);
 echo "var tasks = {\n";
 foreach($assignments as $k=>$v) {
     if ($v['group'] == 'PA')
-        echo "    '$v[group]':\"$v[group]\",\n";
+        echo "    '$k':\"$v[title]\",\n";
 }
 echo "}";
 ?>
