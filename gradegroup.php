@@ -204,19 +204,8 @@ function drop_handler(ev) {
     You have been warned.</p>
     <p>Pick a section to view: <select onchange="picklab(this)">
         <option>(select one)</option>
-        <option>1110-100</option>
-        <option>1110-101</option>
-        <option>1110-102</option>
-        <option>1110-103</option>
-        <option>1110-104</option>
-        <option>1110-105</option>
-        <option>1110-106</option>
-        <option>1110-107</option>
-        <option>1110-108</option>
-        <option>1110-109</option>
-        <option>1110-110</option>
-        <option>1110-111</option>
-        <option>1111</option>
+        <option>2501-301</option>
+        <option>2501-302</option>
     </select></p>
     <p>Add a grading group for <?=staffDropdown('addgroup')?> <input type="button" value="create group" onclick="newgroup()"></p>
     <div><input type="button" value="Show pictures" onclick="if (this.value == 'Show pictures') { this.value = 'Hide pictures'; document.querySelectorAll('img').forEach(function(x){x.classList.remove('hide');}); } else {this.value = 'Show pictures'; document.querySelectorAll('img').forEach(function(x){x.classList.add('hide');}); }"/></div>

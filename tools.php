@@ -510,6 +510,10 @@ function feedbackTag($details, $rubric, $worth) {
 			? round($details['ratio']*$worth,3)." / ". round($worth,3)
 			: round($details['ratio']*100,2)."%"
 			).": ".htmlspecialchars($details['comment'])."</div>";
+		} else if ($rubric['kind'] == 'check') {
+			if ($details >= 1) $ans = '<div class="check correct">✓</div>';
+			else if ($details <= 0) $ans = '<div class="check wrong">✗</div>';
+			else $ans = '<div class="check partial">½</div>';
 		} else if ($rubric['kind'] == 'buckets') {
 			$rows = False;
 			$score = gradePool($details, $rubric, $rows);
@@ -757,8 +761,8 @@ function commentSplit($text, &$main, &$extra) {
  * Both compute a grade and create a pool of comments used (unless $rows is False, then just grade)
  */
 function gradePool(&$gradeobj, $rubric, &$rows, $path='') {
-	if (!$gradeobj)
-		throw new InvalidArgumentException("incomplete grade object");
+	if (!$gradeobj && $gradeobj !== 0)
+		throw new InvalidArgumentException("incomplete grade object ".json_encode($gradeobj));
 	if (!$rubric) 
 		throw new InvalidArgumentException("incomplete rubric object");
 	if (!array_key_exists('kind', $rubric)) 
@@ -792,6 +796,8 @@ function gradePool(&$gradeobj, $rubric, &$rows, $path='') {
 			}
 		}
 		return $gradeobj['ratio'];
+	} else if ($rubric['kind'] == 'check') {
+		return $gradeobj;
 	} else if ($rubric['kind'] == 'buckets') {
 		if (count($rubric['buckets']) != count($gradeobj))
 			throw new InvalidArgumentException("bucket count mismatch");
@@ -824,7 +830,7 @@ function gradePool(&$gradeobj, $rubric, &$rows, $path='') {
 			return $next;
 		return $bucket['score']*(1-$distance) + $next*($distance); // linear path to next bucket
 	} else {
-		throw new InvalidArgumentException("unexpected rubric kind ".$rubric['kind']);
+		throw new InvalidArgumentException("unexpected rubric kind '".$rubric['kind']."'");
 	}
 }
 

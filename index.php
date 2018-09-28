@@ -78,6 +78,10 @@
 		dt.collapsed:before { content: "+ "; }
 		dt.collapsed:after { content: " …"; }
 		dt.collapsed { font-style: italic; }
+
+		.check.correct { background-color:rgba(0,255,0,0.25); }
+		.check.wrong { background-color:rgba(255,0,0,0.25); }
+		.check.partial { background-color:rgba(255,255,0,0.25); }
 		
 		/* input, select, option { font-size:100%; } */
 	</style>
