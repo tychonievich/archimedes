@@ -1218,5 +1218,58 @@ function grade_map($user) {
 	);
 }
 
+/**
+ * Returns a string describing a user's status on an assignment.
+ * 
+ * unknown   -- if data needed to compute this is not available
+ * pending   -- due date in future, or no submission expected
+ * submitted -- if a submission is received but not yet graded
+ * graded    -- if graded
+ * missing   -- if not submitted and not pending or submitted
+ * excused   -- if this assignment has been excused
+ * 
+ * +----------+-----------+---------------+---------------+-------------+
+ * |          | missing   | unsubmitable  | submitted     | graded      |
+ * +==========+===========+===============+===============+=============+
+ * | future   | pending   | pending       | submitted     | graded      |
+ * +----------+-----------+---------------+---------------+-------------+
+ * | open     | pending   | pending       | submitted     | graded      |
+ * +----------+-----------+---------------+---------------+-------------+
+ * | late     | late      | pending       | submitted     | graded      |
+ * +----------+-----------+---------------+---------------+-------------+
+ * | closed   | missing   | missing       | submitted     | graded      |
+ * +----------+-----------+---------------+---------------+-------------+
+ */
+function assignment_status($user, $slug) {
+    $all = assignments();
+    if (!array_key_exists($slug, $all)) return "unknown";
+    if (file_exists("uploads/$slug/$user/.excused")) return "excused";
+    
+    $details = $all[$slug];
+    if (file_exists("uploads/$slug/$user/.extension")) {
+        $details = $details + json_decode(file_get_contents("uploads/$slug/$user/.extension"), TRUE);
+    }
+    
+    $time = "open";
+    if (closeTime($details) < time()) $time = "closed";
+    else if (assignmentTime('open', $details) < time()) $time = "future";
+    else if (assignmentTime('due') < time()) $time = "late";
+    
+    $status = "missing";
+    if (file_exists("uploads/$slug/$user/.grade") $status = "graded";
+    else if (count(glob("uploads/$slug/$user/*")) > 0) $status = "submitted";
+    else if (!array_key_exists('files', $details) &&
+        !file_exists("uploads/$slug/.closed", $details)) // new feature!
+            $status = "unsubmitable";
+    
+    if ($status == "graded") return "graded";
+    else if ($status == "submitted") return "submitted";
+    else if ($status == "unsubmittable") return "pending";
+    else if ($time == "future") return "pending";
+    else if ($time == "open") return "pending";
+    else if ($time == "late") return "late";
+    else if ($time == "closed") return "missing";
+    else return "unknown";
+}
 
 ?>
