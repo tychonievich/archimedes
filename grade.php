@@ -190,7 +190,7 @@ input + input { margin-left:0.5ex; }
 
 .regrade-response { margin:0.5ex; padding:0.5ex; width: calc(100% - 2ex); font-family: inherit; }
 
-		input.error, div.percentage.error > input[type="text"] { background-color: rgba(255,0,0,0.25); }
+		input.error, div.percentage.error > input[type="text"], div.check.error { background-color: rgba(255,0,0,0.25); }
 		
 		.table-columns { margin:0em; border:0px solid black; padding:0em; }
 		table.table-columns { border-collapse:collapse; margin:-1ex; }
@@ -409,6 +409,15 @@ function _grade(id) {
 			ans[key] = _grade(node.id);
 		}
 		return ans;
+	} else if (root.classList.contains('check')) {
+		console.log(root);
+		var json = root.querySelector('input:checked');
+		if (!json) { root.classList.add('error'); throw new Error('Missing check-off grade'); }
+		else root.classList.remove('error');
+
+		var entry = JSON.parse(json.value);
+		
+		return entry;
 	} else if (root.classList.contains('percentage')) {
 		if (root.classList.contains('set')) {
 			var set = root.querySelectorAll('input:checked');
@@ -830,6 +839,12 @@ function rubricTree($rubric, $comments, $grade, $prefix, $path="", $name="") {
 			if ($more !== False) echo htmlspecialchars($more, ENT_QUOTES|ENT_HTML5);
 			echo "</textarea>)";
 		}
+		echo '</div>';
+	} else if ($rubric['kind'] == 'check') {
+		echo "<div class='check' id='$prefix$path' name='$name'>";
+		echo "<label><input type='radio' name='$prefix$path' value='1'> full</label> or ";
+		echo "<label><input type='radio' name='$prefix$path' value='0.5'> partial</label> or ";
+		echo "<label><input type='radio' name='$prefix$path' value='0'> no</label> credit.";
 		echo '</div>';
 	} else if ($rubric['kind'] == 'buckets') {
 		echo "<dl class='buckets' id='$prefix$path'>";

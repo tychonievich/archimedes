@@ -1,3 +1,5 @@
+This file describes the code available at <https://github.com/tychonievich/archimedes>
+
 # Overview
 
 When first designed, this was a webpage where students could upload files.

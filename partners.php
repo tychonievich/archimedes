@@ -139,7 +139,7 @@ if (array_key_exists('partner', $_REQUEST)) {
     echo "</div>";
 }
 function labOf($grpstr) { // NOTE: this may need changing every semester/course...
-    foreach(array('1111','1110-100','1110-101','1110-102','1110-103','1110-104','1110-105','1110-106','1110-107','1110-108','1110-109','1110-110','1110-111') as $opt) {
+    foreach(array('2501-301','2501-302') as $opt) {
         if (strpos($grpstr, $opt) !== FALSE) return $opt;
     }
 }

@@ -71,13 +71,17 @@
 		.person { border: thin solid white; background-color: rgba(255,255,255,0.5); padding:0.25ex; }
 
 		dd table { border-collapse: collapse; width:100%; }
-		dd table td { padding: 1ex; }
+		dd table td, dd table th { padding: 1ex; text-align: left; }
 		dd table tr:nth-child(2n) { background-color:rgba(255,127,0,0.125); }
 
 		dd.collapsed { display:none; }
 		dt.collapsed:before { content: "+ "; }
 		dt.collapsed:after { content: " …"; }
 		dt.collapsed { font-style: italic; }
+
+		.check.correct { background-color:rgba(0,255,0,0.25); }
+		.check.wrong { background-color:rgba(255,0,0,0.25); }
+		.check.partial { background-color:rgba(255,255,0,0.25); }
 		
 		/* input, select, option { font-size:100%; } */
 	</style>
@@ -364,7 +368,7 @@ leavePre();
 // $isself = true; $isstaff = false; // try real user view
 
 // show welcome line, which also helps TAs know if they are not logged in as themselves
-echo "<h1>".($isself ? "Welcome," : "Viewing as")." <span class='name'>$me[name]</span> ($user)</h1><a style='text-align:center; display:block;' href='//cs1110.cs.virginia.edu/'>Return to course page</a>\n";
+echo "<h1>".($isself ? "Welcome," : "Viewing as")." <span class='name'>$me[name]</span> ($user)</h1><a style='text-align:center; display:block;' href='//www.cs.virginia.edu/luther/COA1/F2018/'>Return to course page</a>\n";
 
 if (!$isself) {
 	echo "<img src='picture.php?user=$user' alt='no picture of $user found' class='snapshot'/>";
@@ -525,6 +529,9 @@ else if (array_key_exists('submission', $_FILES)) {
 else if (array_key_exists('CONTENT_LENGTH', $_SERVER) && floatval($_SERVER['CONTENT_LENGTH']) > (1<<27)) {
 	user_error_msg("You appear to have attempted to send some very large file, which our server's security settings caused us not to receive.");
 }
+else if ($_GET['submitted']) {
+	user_error_msg("You appear to have attempted to submit something for ".$_GET['submitted']." but no file arrived. This sometimes happens if you had the submission page open for an extended time before attempting to submit; please try submitting again.");
+}
 
 
 // display extra information, if applicable
@@ -652,7 +659,7 @@ if ($isfaculty) {
 	</form></div>
 	
 	<div class="action">
-		<a href="https://archimedes.cs.virginia.edu/cs1110/gradesheet.php">View all students grades</a> (takes about 10 seconds to generate report; be patient)
+		<a href="gradesheet.php">View all students grades</a> (takes about 10 seconds to generate report; be patient)
 	</div>
 	
 	<div class="action">
@@ -676,6 +683,7 @@ if ($isfaculty) {
 }
 
 echo "<div class='hide-outer hidden'><strong class='hide-header'>Grade in course</strong><div class='hide-inner'>\n";
+echo "<div>Note: assignments start showing up in the denominator of the grade computation when they come due, even if not yet graded. this may cause grades to look artificially low between due date and grading date.</div>";
 echo grade_in_course($user);
 echo "</div></div>\n";
 
@@ -700,10 +708,12 @@ foreach(assignments() as $slug=>$details) {
 	$status = ((!$due || $open > time()) ? "pending" : ($due > time() ? "open" : ($close > time() ? "late" : "closed")));
 	if ($notmine) echo "<div class='assignment pending'>non-credit exercise: ";
 	else echo "<div class='assignment $status'>";
-	if (array_key_exists('writeup', $details))
-		echo "<a href='//cs1110.cs.virginia.edu/$details[writeup]'>";
+	if (array_key_exists('link', $details))
+		echo "<a href='$details[link]'>";
+	else if (array_key_exists('writeup', $details))
+		echo "<a href='//www.cs.virginia.edu/luther/COA1/F2018/$details[writeup]'>";
 	else if (/*($notmine || $isstaff && $isself || $status != "pending") &&*/ array_key_exists('title', $details)) 
-		echo strtolower("<a href='//cs1110.cs.virginia.edu/$slug-$details[title].html'>");
+		echo "<a href='//www.cs.virginia.edu/luther/COA1/F2018/".strtolower("$slug-$details[title]").".html'>";
 	echo "<strong>$slug</strong> ";
 	if (array_key_exists('writeup', $details))
 		echo "</a>";
@@ -806,7 +816,11 @@ foreach(assignments() as $slug=>$details) {
 	
 	
 	if ($latesubmit || $regrade || $upload) {
-		?><form action="<?php echo $_SERVER['REQUEST_URI']; ?>" method="post" enctype="multipart/form-data">
+		$submit_str = parse_str($_SERVER['QUERY_STRING']);
+		$submit_str['submitted'] = $slug;
+		$submit_str = http_build_query($submit_str);
+		
+		?><form action="<?php echo $_SERVER['PHP_SELF']; ?>?<?php echo $submit_str; ?>" method="post" enctype="multipart/form-data">
 		<input type="hidden" name="slug" value="<?=$slug?>"/>
 		<?php
 		
@@ -842,6 +856,9 @@ foreach(assignments() as $slug=>$details) {
 			
 			if (strpos($slug, 'Lab') === 0) {
 				echo "<div>Lab regrades are handled directly by graders in lab meetings.</div>";
+			} else if (strpos($slug, 'Q') === 0) {
+				// echo "<div>Quiz regrades are based only on the comments you entered when taking the quiz.</div>";
+				// do not show regrade option
 			} else {
 
 				?><div class='hide-outer hidden'><strong class='hide-header'>regrade request</strong><div class='hide-inner'>

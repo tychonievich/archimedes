@@ -9,8 +9,8 @@ if (!$path) die('Failed to provide a file name');
 if (($isstaff && $isself) && strpos($path, 'support') === 0) $path = "meta/$path";
 else $path = "uploads/$path";
 
-if (realpath($path) != getcwd()."/$path") die('Invalid file name');
-if (basename($path)[0] == '.') die('Invalid file name');
+if (realpath($path) != getcwd()."/$path") die('Invalid file name (1)');
+if (basename($path)[0] == '.') die('Invalid file name (2)');
 
 if (is_dir($path)) {
 	$parts = explode('/', trim($path, '/'));
@@ -121,7 +121,7 @@ if (is_dir($path)) {
 	die('Cannot download directories');
 }
 
-if (!($isstaff && $isself) && strpos($path, "/$user/") === FALSE) die('Invalid file name');
+if (!($isstaff && $isself) && strpos($path, "/$user/") === FALSE) die('Invalid file name (3)');
 
 $finfo = new finfo(FILEINFO_MIME);
 $mime = $finfo->file($path);
