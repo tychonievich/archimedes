@@ -372,7 +372,11 @@ function logInAs($compid=false, $initial=true) {
 			$isstaff = hasStaffRole($me);
 		}
 	} else {
-		preFeedback("ERROR: user $user is not in our roster.");
+		if (strlen($user) == 0) {
+			preFeedback("For some reason, NetBadge said you have no computing ID.\nYou can probably fix this by clearing your cookies,\nor by visiting this site in a private (Firefox) or incognito (Chrome) browser window");
+		} else {
+			preFeedback("ERROR: user $user is not in our roster.");
+		}
 		leavePre();
 		if (array_key_exists('PHP_AUTH_USER', $_SERVER) && $_SERVER['PHP_AUTH_USER'] != $user) {
 			echo "<p><a href=\"$_SERVER[SCRIPT_NAME]\">Return to site as yourself.</a></p>\n";
@@ -511,9 +515,9 @@ function feedbackTag($details, $rubric, $worth) {
 			: round($details['ratio']*100,2)."%"
 			).": ".htmlspecialchars($details['comment'])."</div>";
 		} else if ($rubric['kind'] == 'check') {
-			if ($details >= 1) $ans = '<div class="check correct">✓</div>';
-			else if ($details <= 0) $ans = '<div class="check wrong">✗</div>';
-			else $ans = '<div class="check partial">½</div>';
+			if ($details >= 1) $ans = '<div class="check correct">full credit</div>';
+			else if ($details <= 0) $ans = '<div class="check wrong">no credit</div>';
+			else $ans = '<div class="check partial">partial credit</div>';
 		} else if ($rubric['kind'] == 'buckets') {
 			$rows = False;
 			$score = gradePool($details, $rubric, $rows);

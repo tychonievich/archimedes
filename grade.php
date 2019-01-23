@@ -207,6 +207,7 @@ input + input { margin-left:0.5ex; }
 		.highlighted .number { color: #0000ff; }
 		.highlighted .keyword { font-weight: bold; color: #000080; }
 	</style>
+	<script type="text/javascript" src="codebox.js"></script>
 	<script>
 /**
  * This function is supposed to change all self-sizing panels based on a page resize
@@ -226,79 +227,12 @@ function imageresize() {
 window.onresize = imageresize;
 
 
-// ------- BEGIN ------- a full python syntax highlighter as a messy application of regular expressions
-var re_comment = /(#[^\n]*)/;
-var re_string = /((?:\br?b|\bbr)?"""(?:[^"\\]|\\[\s\S]|""?(?=[^"]))*"""|(?:r?b|br)?'''(?:[^'\\]|\\[\s\S]|''?(?=[^']))*'''|(?:r?b|br)?"(?:[^"\\\n]|\\[\s\S])*"|(?:r?b|br)?'(?:[^'\\\n]|\\[\s\S])*')/;
-var re_number = /\b((?:[0-9]*\.[0-9]+(?:[eE][-+][0-9]+)?|[0-9]+\.(?:[eE][-+][0-9]+)?|[0-9]+[eE][-+][0-9]+|0[Bb][01]+|0[Oo][0-7]+|0[Xx][0-9a-fA-F]+|0|[1-9][0-9]*)[jJ]?)\b/;
-var re_keyword = /\b(elif|global|as|if|from|raise|for|except|finally|import|pass|return|else|break|with|class|assert|yield|try|while|continue|del|def|lambda|nonlocal|and|is|in|not|or|None|True|False)\b/;
-
-var tokenizer = new RegExp([re_comment.source, re_string.source, re_number.source, re_keyword.source].join('|'), 'g');
-var token_types = [null, 'comment', 'string', 'number', 'keyword'];
-
-/**
- * A function I have no idea why isn't built into ECMAScript: an HTML escaper
- */
-function htmlspecialchars(s) {
-	return s.replace(/\&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;')
-}
-/**
- * used the regular expressions to add style tags to all contents of <pre><code>
- */
-function highlight() {
-	var highlight = document.querySelectorAll('pre code');
-	for(var i=0; i<highlight.length; i+=1) {
-		var code = highlight[i];
-		if (code.parentElement.classList.contains('highlighted')) continue;
-		var src = code.innerText.replace(/\t/g, '    ');
-		var bits = src.split(tokenizer);
-		var newcode = '';
-		for(var j=0; j<bits.length; j+=token_types.length) {
-			newcode += htmlspecialchars(bits[j]);
-			if (j+1 == bits.length) break;
-			for(var k=1; k<token_types.length; k+=1)
-				if (bits[j+k]) newcode += '<span class="'+token_types[k]+'">'+htmlspecialchars(bits[j+k])+'</span>';
-		}
-		var lines = newcode.split('\n');
-		var wid = String(lines.length).length;
-		src = '';
-		for(var j=0; j<lines.length; j+=1) {
-			src += '<span class="lineno">'+String(j+1).padStart(wid)+'</span>' + lines[j] + '\n';
-		}
-		code.innerHTML = src + '<input type="button" value="line numbers" onclick="togglelineno()"/><input type="button" value="wrap" onclick="togglewrap()"/>';
-		code.parentElement.classList.add('highlighted');
-	}
-}
-
-// ------- END ------- a full python syntax highlighter as a messy application of regular expressions
-
 <?php
 $js_asgn = assignments()[$_GET['assignment']];
 if (array_key_exists('total', $js_asgn)) { $js_total = $js_asgn['total']; }
 else { $js_total = 1; }
 ?>
 
-
-
-function togglewrap() {
-	var s = document.querySelectorAll('.highlighted');
-	for(var i=0; i<s.length; i+=1) {
-		if (s[i].style.whiteSpace == 'pre') {
-			s[i].style.whiteSpace = 'pre-wrap';
-			s[i].style.overflowX = '';
-		}
-		else {
-			s[i].style.whiteSpace = 'pre';
-			s[i].style.overflowX = 'auto';
-		}
-	}
-}
-function togglelineno() {
-	var s = document.querySelectorAll('.lineno');
-	for(var i=0; i<s.length; i+=1) {
-		if (s[i].style.display == 'none') s[i].style.display = '';
-		else s[i].style.display = 'none';
-	}
-}
 
 /** Adds hooks to all definition lists so that clicking their terms toggles the visibility of their definitions */
 function setUpCollapses() {
@@ -662,7 +596,7 @@ function toGrade($slug, $grader, $redo) {
 	if (array_key_exists('limit', $_REQUEST)) $ans = array_slice($ans, 0, intval($_REQUEST['limit']));
 	return $ans;
 }
-function showGradingView($slug, $student, $rubric, $comments) {
+function showGradingView($slug, $student, $rubric, $comments, $nof='') {
 	$name = fullRoster()[$student]['name'];
 	echo "<table class='table-columns' id='table\n$slug\n$student'><tbody><tr><td>";
 	$files = false;
@@ -698,6 +632,7 @@ function showGradingView($slug, $student, $rubric, $comments) {
 			}
 		}
 	}
+	echo $nof;
 	echo "</div>";
 	
 	if ($slug == "Checkpoint 1") { // HACK
@@ -842,9 +777,15 @@ function rubricTree($rubric, $comments, $grade, $prefix, $path="", $name="") {
 		echo '</div>';
 	} else if ($rubric['kind'] == 'check') {
 		echo "<div class='check' id='$prefix$path' name='$name'>";
-		echo "<label><input type='radio' name='$prefix$path' value='1'> full</label> or ";
-		echo "<label><input type='radio' name='$prefix$path' value='0.5'> partial</label> or ";
-		echo "<label><input type='radio' name='$prefix$path' value='0'> no</label> credit.";
+		echo "<label><input type='radio' name='$prefix$path' value='1'";
+		if ($grade >= 1) echo " checked='checked'"; 
+		echo "> full</label> or ";
+		echo "<label><input type='radio' name='$prefix$path' value='0.5'";
+		if ($grade > 0 && $grade < 1) echo " checked='checked'"; 
+		echo "> partial</label> or ";
+		echo "<label><input type='radio' name='$prefix$path' value='0'";
+		if ($grade <= 0) echo " checked='checked'"; 
+		echo "> no</label> credit.";
 		echo '</div>';
 	} else if ($rubric['kind'] == 'buckets') {
 		echo "<dl class='buckets' id='$prefix$path'>";
@@ -959,8 +900,9 @@ if (array_key_exists('assignment', $_REQUEST)) {
 			// show this user's grading interface
 			$rubric = rubricOf($slug);
 			$comments = commentSet($slug);
-			foreach(toGrade($slug, $grader, $redo) as $student) {
-				showGradingView($slug, $student, $rubric, $comments);
+			$alltodo = toGrade($slug, $grader, $redo);
+			foreach($alltodo as $i=>$student) {
+				showGradingView($slug, $student, $rubric, $comments, " ".($i+1)." of ".count($alltodo));
 			}
 			?>
 			<div id="grading-footer">

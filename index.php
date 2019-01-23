@@ -83,6 +83,11 @@
 		.check.wrong { background-color:rgba(255,0,0,0.25); }
 		.check.partial { background-color:rgba(255,255,0,0.25); }
 		
+		blockquote { border:1px solid rgba(0,0,0,0.125); padding:1ex; border-radius:1ex; background-color:rgba(0,0,0,0.04); margin:1em 4em; }
+		
+		div.grade + div { white-space: pre-wrap; }
+
+		
 		/* input, select, option { font-size:100%; } */
 	</style>
 	<script src="codebox.js"></script>
@@ -389,7 +394,7 @@ if (array_key_exists('extension_request', $_POST) && (!array_key_exists('submiss
 		}
 	}
 } // end extension request posting
-if (array_key_exists("make_live", $_POST)) {
+else if (array_key_exists("make_live", $_POST)) {
 	if (!preg_match('@^uploads/[^/]+/'.$user.'/.2[^/]*/[^/]*$@', $_POST['make_live'])) {
 		user_error_msg("Received roll-back request for a different user.");
 	} else if (!file_exists($_POST['make_live'])) {
@@ -399,6 +404,7 @@ if (array_key_exists("make_live", $_POST)) {
 		$dname = dirname(dirname($_POST['make_live']));
 		$slug = basename(dirname($dname));
 		if (file_exists("$dname/$fname")) unlink("$dname/$fname");
+		if (file_exists("$dname/.autofeedback")) unlink("$dname/.autofeedback");
 		link($_POST['make_live'], "$dname/$fname");
 		ensure_file("meta/queued/$slug-$user");
 		if (file_exists("$dname/.grade")) {
@@ -481,6 +487,10 @@ else if (array_key_exists('submission', $_FILES)) {
 						}
 						if (!$isok || strpos($name, '/') !== FALSE || strpos($name, "\\") !== FALSE) {
 							user_error_msg("File <tt>".htmlspecialchars($name)."</tt> rejected because it is not one of the file names accepted for <strong>$slug</strong>.");
+							continue;
+						}
+						if (filesize($tmp) <= 0) {
+							user_error_msg("File <tt>".htmlspecialchars($name)."</tt> rejected because the file you upload was empty.");
 							continue;
 						}
 						if (!file_move($realdir . $name, $tmp)) {
@@ -816,13 +826,15 @@ foreach(assignments() as $slug=>$details) {
 	
 	
 	if ($latesubmit || $regrade || $upload) {
-		$submit_str = parse_str($_SERVER['QUERY_STRING']);
+		$submit_str = $_GET;
 		$submit_str['submitted'] = $slug;
 		$submit_str = http_build_query($submit_str);
+
+		$plain_str = $_GET;
+		if (array_key_exists('submitted', $plain_str)) { unset($plain_str['submitted']); }
+		$plain_str = http_build_query($plain_str);
+		//if ($_SERVER['PHP_AUTH_USER'] == 'lat7h') { preFeedback("Query string: $plain_str ".$_SERVER['QUERY_STRING']); var_dump($_GET); leavePre(); }
 		
-		?><form action="<?php echo $_SERVER['PHP_SELF']; ?>?<?php echo $submit_str; ?>" method="post" enctype="multipart/form-data">
-		<input type="hidden" name="slug" value="<?=$slug?>"/>
-		<?php
 		
 		if ($latesubmit) {
 			if ($regrade) {
@@ -841,7 +853,10 @@ foreach(assignments() as $slug=>$details) {
 					If you had such a circumstance, describe it below and it will be considered by course staff.
 					Please include a proposed new due date in your request.
 				</p>
+				<form action="<?php echo $_SERVER['PHP_SELF']; ?>?<?php echo $plain_str; ?>" method="post" enctype="multipart/form-data">
+				<input type="hidden" name="slug" value="<?=$slug?>"/>
 				<textarea name="extension_request"></textarea><br/><input type="submit"/>
+				</form>
 				<?php
 			}
 			echo '</div></div>';
@@ -864,6 +879,9 @@ foreach(assignments() as $slug=>$details) {
 				?><div class='hide-outer hidden'><strong class='hide-header'>regrade request</strong><div class='hide-inner'>
 				<?php 
 				if (file_exists("meta/requests/regrade/$slug-$user")) {
+					echo '<blockquote>';
+					echo htmlspecialchars(file_get_contents("meta/requests/regrade/$slug-$user"));
+					echo '</blockquote>';
 					?><p>You submitted the above regrade request <?=prettyTime(filemtime("meta/requests/regrade/$slug-$user"))?>; it is currently waiting for regrader decision.</p><?php
 				} else {
 					?>
@@ -871,7 +889,10 @@ foreach(assignments() as $slug=>$details) {
 						Although uncommon, we do make mistakes in grading.
 						If you feel one of those mistakes happened to you, please describe why below:
 					</p>
+					<form action="<?php echo $_SERVER['PHP_SELF']; ?>?<?php echo $plain_str; ?>" method="post" enctype="multipart/form-data">
+					<input type="hidden" name="slug" value="<?=$slug?>"/>
 					<textarea name="regrade_request"></textarea><br/><input type="submit"/>
+					</form>
 					<?php
 				}
 				echo '</div></div>';
@@ -882,6 +903,8 @@ foreach(assignments() as $slug=>$details) {
 
 		if ($upload) {
 			if (array_key_exists('files', $details)) {
+?><form action="<?php echo $_SERVER['PHP_SELF']; ?>?<?php echo $submit_str; ?>" method="post" enctype="multipart/form-data">
+<input type="hidden" name="slug" value="<?=$slug?>"/><?php
 				$patterns = $details['files'];
 				if (is_string($patterns)) $patterns = array($patterns);
 				echo "<p>You may ".($haveuploaded ? 're' : '')."submit ";
@@ -891,12 +914,15 @@ foreach(assignments() as $slug=>$details) {
 				}
 				if (!$isself) echo " for $me[name] ($user)";
 				echo ":</p>\n<center><input type='file' multiple='multiple' name='submission[]'/><input type='submit' name='upload' value='Upload file(s)'/></center>\n";
+?></form><?php
 			} else {
 				echo "<p>Course staff did not set up submissions for this assignment</p>\n";
 			}
 		}
 		
 		if ($isfaculty) {
+?><form action="<?php echo $_SERVER['PHP_SELF']; ?>" method="post" enctype="multipart/form-data">
+<input type="hidden" name="slug" value="<?=$slug?>"/><?php
 			$subs = glob("uploads/$slug/$user/.2*");
 			$sub_cnt = count($subs);
 			if ($sub_cnt > 0) {
@@ -931,9 +957,9 @@ foreach(assignments() as $slug=>$details) {
 				echo "</ol>";
 				echo "</div></div>";
 			}
+?></form><?php
 		}
 		
-		echo "</form>\n";
 	}
 	if ($slug == 'Project') {
 		echo 'We also encourage (but do not require) submitting a <a href="https://docs.google.com/forms/d/e/1FAIpQLSclqTmYTrGNerC158UMlN5A2jgbA7xquFpAlnQ4p_F1MGlOAw/viewform?usp=sf_link">partner evaluation</a>, which will be factored into overall grading';
