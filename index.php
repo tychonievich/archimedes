@@ -406,7 +406,7 @@ else if (array_key_exists("make_live", $_POST)) {
 		if (file_exists("$dname/$fname")) unlink("$dname/$fname");
 		if (file_exists("$dname/.autofeedback")) unlink("$dname/.autofeedback");
 		link($_POST['make_live'], "$dname/$fname");
-		ensure_file("meta/queued/$slug-$user");
+		ensure_file("meta/queued/$slug-$user", basename(dirname($_POST['make_live'])));
 		if (file_exists("$dname/.grade")) {
 			user_success_msg("roll-back completed: <tt>$dname/$fname</tt> now aliases <tt>$_POST[make_live]</tt>, and the autograder has been queued to review <tt>meta/queued/$slug-$user</tt>. Note, however, that this was previous graded; we advise <a href='grade.php?student=$user&assignment=$slug'>manually regrading</a>.");
 		} else {
@@ -519,7 +519,7 @@ else if (array_key_exists('submission', $_FILES)) {
 						
 						if (file_exists($linkdir . '.grade')) unlink($linkdir . '.grade');
 						if (file_exists($linkdir . '.autofeedback')) unlink($linkdir . '.autofeedback');
-						if (!ensure_file("meta/queued/$slug-$user")) {
+						if (!ensure_file("meta/queued/$slug-$user", ".$now")) {
 							user_notice_msg("Failed to queue <tt>".htmlspecialchars($name)."</tt> for automated feedback (not sure why; please report this to your professor).");
 							continue;
 						}

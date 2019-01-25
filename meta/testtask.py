@@ -43,13 +43,14 @@ There are 3 classes of output:
 
 - correctness score: a number between 0 and 1
 
+This file is based on earlier code by the same author: https://github.com/tychonievich/pypractice
 '''
 
 
 
 from sys import argv
 from os.path import exists
-import autotester, testmaker, yaml, json
+import testmaker, yaml, json
 
 if len(argv) != 3 or not argv[1].endswith('.yaml') or not argv[2].endswith('.py'):
     print('USAGE: python3', argv[0], 'path/to/task.yaml', 'path/to/implementation.py')
@@ -62,7 +63,6 @@ if not exists(argv[2]):
     exit(3)
 
 
-with open(argv[1]) as f: t = testmaker.Tester(yaml.safe_load(f))
-
+with open(argv[1]) as f: t = testmaker.loadyaml(yaml.safe_load(f))
 
 print(json.dumps(t.report(argv[2]), indent=2))

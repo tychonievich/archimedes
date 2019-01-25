@@ -1,3 +1,10 @@
+"""
+The latest in my every-mode-complicated series of tools for providing timeouts and organized I/O reporting
+for Python code, both module and function based.
+
+This file is based on earlier code by the same author: https://github.com/tychonievich/pypractice
+"""
+
 import os.path, shutil, tempfile
 
 _function = type(lambda x:x)
@@ -152,8 +159,8 @@ class IOStub:
                 p.__dict__[n] = self._safeify(p.__dict__[n], (0,), ('filename',))
             p.samefile = self._safeify(p.samefile, (0,1), ('f1','f2'))
             mod.path = p
-        elif name == 'urllib.request':
-            raise BaseException('TO DO: implement url whitelists')
+        # elif name == 'urllib.request':
+            # raise BaseException('TO DO: implement url whitelists')
         else:
             mod = wrap(mod, name)
         return mod

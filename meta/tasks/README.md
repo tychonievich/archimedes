@@ -65,6 +65,12 @@ cases:
 -   A `solution`.  This must be valid Python code that solves the problem correctly.  It needn't be pretty.
 -   A `func`tion name if and only if this is a test for a function, not a program.
     Currently a separate task file is needed for each function in a multi-function assignment.
+    
+    If the `func`'s value is an object,
+        
+    - each key is taken as a function name
+    - any fields that could appear at the top-level scope (except for `func`) may appear distinctly for each `func`
+    
 -   Some way of specifying test cases (see [Specifying test cases] below).
 
 ## Optional Fields
@@ -104,23 +110,20 @@ cases:
 
     -   `loops: False`{.yaml} to prohibit the use of `while`{.python} and `for`{.python}.
 
-    -   `ast: |` followed by a function that takes an `ast` node as its argument and either raises a `ValueError` with a user-centric message string or does not do so.
+    -   `ast: |-` code that handles a global ast-valued variable `tree` to either raise a `ValueError` with a user-centric message string not so raise.
         
-        Note: `ast` is currently untested and likely will not work properly.  If you need it for your problem, email Prof. Tyconievich with the code you want to work and he'll prioritize implementing it.
     
     ````yaml
-    src:
-      ban:
-        - pow
-        - log
-      recursive: True
-      loops: False
-      ast: |
-        def no_pow(node):
-            import ast
-            for f in ast.walk(node):
-                if isinstance(f, ast.Pow):
-                    raise ValueError("use of ** prohibited")
+    ban:
+      - pow
+      - log
+    recursive: True
+    loops: False
+    ast: |-
+      import ast
+      for f in ast.walk(tree):
+          if isinstance(f, ast.Pow):
+              raise ValueError("use of ** prohibited")
     ````
 
 ## Specifying test cases

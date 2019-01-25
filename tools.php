@@ -360,8 +360,11 @@ function logInAs($compid=false, $initial=true) {
 		$user = $compid;
 	} else if (array_key_exists('PHP_AUTH_USER', $_SERVER)) {
 		$user = $_SERVER['PHP_AUTH_USER'];
+	} else if ($_SERVER['REMOTE_ADDR'] == '127.0.0.1') {
+		$user = 'lat7h'; // testing
 	} else {
 		preFeedback("ERROR: you don't appear to be authenticated with NetBadge.");
+		var_dump($_SERVER);
 		leavePre();
 		die("</body></html>\n");
 	}
@@ -604,11 +607,15 @@ function file_move($newpath, $oldpath) {
 	chmod($newpath, 0666);
 	return $ans;
 }
-function ensure_file($path) {
+function ensure_file($path, $contents) {
 	umask(0);
 	if (!is_dir(dirname($path)))
 		mkdir(dirname($path), 0777, true);
-	$ans = touch($path);
+	if ($contents) {
+		$ans = file_put_contents($path, $contents);
+	} else {
+		$ans = touch($path);
+	}
 	chmod($path, 0666);
 	return $ans;
 }
@@ -1266,7 +1273,7 @@ function assignment_status($user, $slug) {
     else if (assignmentTime('due') < time()) $time = "late";
     
     $status = "missing";
-    if (file_exists("uploads/$slug/$user/.grade") $status = "graded";
+    if (file_exists("uploads/$slug/$user/.grade")) $status = "graded";
     else if (count(glob("uploads/$slug/$user/*")) > 0) $status = "submitted";
     else if (!array_key_exists('files', $details) &&
         !file_exists("uploads/$slug/.closed", $details)) // new feature!

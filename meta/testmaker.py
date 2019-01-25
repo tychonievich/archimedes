@@ -37,6 +37,7 @@ parse task/whatever.yaml into a Test object
     constraints:
         always eval'd
 
+This file is based on earlier code by the same author: https://github.com/tychonievich/pypractice
 '''
 
 def req_recursion(node):
@@ -77,10 +78,10 @@ def ban(*names):
     
 
 def ex_msg(ex):
-    '''turns an exception into a one-line and multi-line message.
-    Skips the top-level invocation, which is always from the testing harness.'''
+    '''turns an exception into a one-line and multi-line message.'''
+    # Skips the top-level invocation, which is always from the testing harness.'''
     msg = ''
-    tr = ex.__traceback__.tb_next
+    tr = ex.__traceback__# .tb_next
     line = None
     fname = None
     while tr is not None:
@@ -110,7 +111,7 @@ def case_str(case, func='f'):
         if len(ans) > 0: ans += '\n'
         ans += '\n'.join('input '+str(_+1)+': '+str(case['inputs'][_]) for _ in range(len(case['inputs'])))
     if ans.startswith('input 1:') and 'input 2:' not in ans:
-        ans = 'typed: ' + ans[9:]
+        ans = ans.replace('input 1:', 'input:')
     return ans
 
 def compare_result(wanted, got):
@@ -170,22 +171,74 @@ def run(exe, funcname=None, inputs=None, args=(), kwargs={}):
     return retval, io.outputs
 
 def asfunc(src, header):
-    if 'return' not in src:
+    if 'return' not in src and 'raise' not in src:
         src = src.strip()
         src = src.rsplit('\n', 1)
         src = ''.join(src[:-1])+'\nreturn '+src[-1]
     return header.strip(' :')+':\n    ' + src.strip().replace('\n', '\n    ')
 
+def loadyaml(obj):
+    """Given the results of yaml.safe_load(...), returns either (a) a single Tester
+    of (b) a dict of Testers, one per func, with weight information"""
+    if 'func' in obj and type(obj['func']) is dict:
+        return MultiTester(obj)
+    else:
+        return Tester(obj)
+
+class MultiTester:
+    def __init__(self, obj):
+        self.funcs = {}
+        for fname in obj['func']:
+            base = {**{k:v for k,v in obj.items() if k != 'func'}, **obj['func'][fname]}
+            base['func'] = fname
+            self.funcs[fname] = {
+                'tester':Tester(base),
+                'weight':base.get('weight',1),
+            }
+    def report(self, fname):
+        bits = {k:v['tester'].report(fname) for k,v in self.funcs.items()}
+        result = {
+            'correctness':0,
+            'feedback':'',
+            'missed':[],
+            'details':[]
+        }
+        num, denom = 0, 0
+        for k,v in bits.items():
+            result['feedback'] += '{}\n{}\n{}\n'.format('-'*30, (' '+k+' ').center(30,'-'), v['feedback'])
+            result['missed'].extend(v.get('missed',[]))
+            w = self.funcs[k]['weight']
+            for e in v.get('details',[]):
+                e.setdefault('weight',1)
+                e['weight'] *= w / len(v.get('details',[]))
+            result['details'].extend(v.get('details',[]))
+            num += w * v['correctness']
+            denom += w
+        result['correctness'] = num / denom
+        result['feedback'] += '-'*30
+        return json_ready(result)
+
+def json_ready(obj):
+    """removes exceptions"""
+    if type(obj) is dict:
+        return {k:json_ready(v) for k,v in obj.items()}
+    elif type(obj) in (list, tuple):
+        return [json_ready(v) for v in obj]
+    elif isinstance(obj, BaseException):
+        return ex_msg(obj)
+    else:
+        return obj
+
 class Tester:
     def __init__(self, obj):
         self.allow = obj.get('imports', ())
         self.banned = obj.get('ban', ())
-        self.astchecks = (
-            ((req_recursion,) if obj.get('recursive') is True else ()) +
-            ((no_loops,) if obj.get('loops') is False else ()) +
-            obj.get('ast', ())
-            # to do: add re, ban_re, recursive: False, loops: True
-        )
+        self.astchecks = []
+        if obj.get('recustive') is True: self.astchecks.append(req_recursion)
+        if obj.get('loops') is False: self.astchecks.append(no_loops)
+        if 'ast' in obj:
+            self.astchecks.append(compile(obj['ast'], 'ast_check.py', 'exec'))
+
         if 'solution' in obj:
             self.solution = self.compile(obj['solution'], loose_rules=True)
         self.func = obj.get('func')
@@ -233,9 +286,20 @@ class Tester:
     def test(self, filename):
         try:
             user = modwrap.safe_execable(filename, imports=self.allow, ban_tokens=self.banned)
-            for check in self.astchecks:
-                check(user[1]) # should throw an exception on violation
-            
+            try:
+                for check in self.astchecks:
+                    if callable(check):
+                        check(user[1]) # should throw an exception on violation
+                    else:
+                        exec(check, {'tree':user[1]})
+            except ValueError as ex:
+                return [{
+                    'name':'Check for coding rules: '+str(ex),
+                    'correct':False,
+                    'weight':1,
+                    'feedback':str(ex),
+                }]
+                
             results = []
             for case in self.cases:
                 report = {
@@ -357,7 +421,15 @@ class Tester:
         details:        every case tested in full detail
         """
         res = self.test(filename)
-        if isinstance(res, BaseException):
+        if isinstance(res, SyntaxError):
+            return {
+                "feedback":res.__class__.__name__+': ' + str(res),
+                "missed":[res.__class__.__name__+': ' + str(res)],
+                "correctness":0,
+                "details":ex_msg(res)
+            }
+        elif isinstance(res, BaseException):
+            msg,tb = ex_msg(res)
             return {
                 "feedback":"Unexpected crash of autotester. If this happens more than once, inform a course instructor.",
                 "missed":["Unexpected crash of autotester. If this happens more than once, inform a course instructor."],
@@ -365,9 +437,9 @@ class Tester:
                 "details":ex_msg(res)
             }
         ans = {
+            "correctness":0,
             "feedback":[],
             "missed":[],
-            "correctness":0,
             "details":[],
         }
         yes, no, pts, denom = 0,0,0,0
@@ -377,6 +449,8 @@ class Tester:
             
             if rep.get('feedback'):
                 ans['feedback'].append('{}: {}'.format(('PASSED' if rep['correct'] else 'FAILED'), rep['feedback']))
+                if str(rep.get('error','')).startswith('raised '):
+                    ans['feedback'][-1] += '\n    (' + str(rep.get('error',''))+')'
             else:
                 if rep['correct']: yes += 1
                 else: no += 1
@@ -402,5 +476,5 @@ class Tester:
         if len(ans['missed']) == 0 and holdout:
             ans['missed'].append('other hidden test cases')
         
-        return ans
+        return json_ready(ans)
         
