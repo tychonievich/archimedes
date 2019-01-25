@@ -81,7 +81,7 @@ def newcode(path):
     
     if not pyfile or not subdir or not os.path.exists(subdir):
         print('no submission found in', subdir)
-        # os.unlink(path) # remove queue for absent file
+        os.unlink(path) # remove queue for absent file
         return
 
     if not slug in testers:
@@ -119,7 +119,7 @@ def newcode(path):
     except BaseException as ex:
         with open(dst, 'w') as f: json.dump({'correct':0,'error':testmaker.ex_msg(ex)}, f, indent=2)
     
-    # os.unlink(path) # remove queue now that grade finished
+    os.unlink(path) # remove queue now that grade finished
     return
     
     
