@@ -70,6 +70,7 @@ cases:
         
     - each key is taken as a function name
     - any fields that could appear at the top-level scope (except for `func`) may appear distinctly for each `func`
+    - each may have a different `weight`, defaulting to 1 id not specified
     
 -   Some way of specifying test cases (see [Specifying test cases] below).
 
@@ -152,6 +153,7 @@ Each case may also specify
     `"wrong result"` for `predicate`s and `constraints`, 
     `"returned wrong value"` for `retval`s, and 
     `"printed wrong text"` for `outputs`.
+-   `weight` -- the relative importance of this case, defaulting to 1.
 
 #### On `outputs`
 
@@ -183,6 +185,27 @@ then both `retval` and `outputs` must be identical to those produced by the `sol
 If neither `retval` nor `outputs` is specified and `exact: False`{.yaml} is specified,
 neither `retval` nor `outputs` are checked except as required by `constraints`.
 
+### Controlling visibility
+
+This system provides three levels of feedback.
+
+- `"feedback"` will be a string listing passed/failed messages listed under `feedback`,
+    with "passed $x$ out of $y$ additional tests" for tests that have no `feedback`
+    and that are not hidden with `hide: true`{.yaml}.
+    Hidden cases are not shown at all.
+
+- `"missed"` is an array of strings, each one being the `name`
+    (defaulting to a summary of the function arguments and typed inputs)
+    of one failed test that is not hidden with `hide: true`{.yaml}.
+
+- `"details"` is an array of objects, one per test performed.
+
+The intended use is to release `"feedback"` on a limited, early basis
+and provide `"missed"` at some cost to the user.
+But there are many other options available:
+you could use `name`s to hide the details of `"missed"` test cases,
+or use visible 0-`weight` cases and `hide` all non-0 `weight` cases,
+etc.
 
 ### Specification formats
 

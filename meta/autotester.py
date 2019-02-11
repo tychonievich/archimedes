@@ -22,10 +22,10 @@ Requires
 This file is based on earlier code by the same author: https://github.com/tychonievich/pypractice
 """
 
-import os.path
+import os.path, sys
 
 
-root = '/var/tmp/tester/archimedes/'
+root = os.path.dirname(os.path.dirname(sys.argv[0]))
 tasks = os.path.join(root, 'meta/tasks') # {slug}.yaml
 queue = os.path.join(root, 'meta/queued') # {slug}-{user} with contents .{date}
 uploads = os.path.join(root, 'uploads/{slug}/{user}/{date}')
@@ -118,6 +118,10 @@ def newcode(path):
         with open(dst, 'w') as f: json.dump(result, f, indent=2)
     except BaseException as ex:
         with open(dst, 'w') as f: json.dump({'correct':0,'error':testmaker.ex_msg(ex)}, f, indent=2)
+    
+    dst2 = os.path.join(os.path.dirname(os.path.dirname(dst)), os.path.basename(dst))
+    if os.path.exists(dst) and not os.path.exists(dst2):
+        os.link(dst, dst2)
     
     os.unlink(path) # remove queue now that grade finished
     return

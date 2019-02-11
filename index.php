@@ -1,202 +1,11 @@
-<?php header('Content-Type: text/html; charset=utf-8'); ?>﻿<!DOCTYPE html>
+<?php header('Content-Type: text/html; charset=utf-8'); 
+$metadata = json_decode(file_get_contents('meta/course.json'), true);
+?>﻿<!DOCTYPE html>
 <html><head>
-	<title>Archimedes Submission Server</title>
-	<style>
-		html { background:grey; }
-		body { font-family: sans-serif; 
-			max-width:50em; display:table; margin:auto; 
-			border-radius:1em; border:thick solid grey; padding:1ex; 
-			background: white; 
-			}
-		.assignment, .action { border-radius:1ex; padding:1ex; margin:1ex 0ex; }
-		.assignment.pending { background:rgba(0,0,0,0.0625); opacity:0.5; }
-		.assignment.open { background:rgba(0,255,127,0.0625); }
-		.assignment.late { background:rgba(255,127,0,0.0625); }
-		.assignment.closed { background:rgba(0,0,0,0.0625); }
-		.action { background:rgba(191,0,255,0.0625); border: thin solid rgba(191,0,255,0.25)}
-		div.prewrap pre { background: rgba(63,31,0,1); color: white; padding:1ex; margin:0em; float:left; }
-		div.prewrap { max-width:50em; overflow:auto; padding:0em; margin:0em; background: rgba(63,31,0,1); }
-		
-		h1 { margin:0.25ex 0ex; text-align:center; }
-		p { margin:0.5ex 0ex; }
-		
-		.assignment tt, .big tt { border: thin solid white; padding: 1px; background: rgba(255,255,255,0.25); }
-		
-		.hide-outer { margin:0ex 0.5ex; border:thin solid rgba(0,0,0,0.5); padding:0.5ex; border-radius:0.5ex; }
-		.hidden strong { font-weight: normal; display:block; width:100%; }
-		.hidden > strong:before { content: "+ "; }
-		.shown > strong:before { content: "− "; }
-		.hidden .hide-inner { display:none; }
-		.hide-outer textarea { width:100%; }
-		.hide-outer.important { border-width:thick; background:rgba(255,255,0,0.5); }
-		
-		.big { font-size: 150%; margin:1ex; padding:1ex; border: thick solid; border-radius:1ex; }
-		.big h1 { font-size: 125%; text-align:left; margin:0em;}
-		.big.notice { border-color:rgba(0,0,0,0.25); background-color:rgba(0,0,0,0.0625); font-size:125%; }
-		.big.success { border-color:rgba(0,255,127,0.5); background-color:rgba(0,255,127,0.125); }
-		.big.error { border-color:rgba(255,63,0,0.5); background-color:rgba(255,63,0,0.125); }
-		
-		pre.rawtext, pre.feedback, pre.regrade-request, pre.regrade-response { white-space:pre-wrap; background: white; padding:0.5ex; }
-		pre.regrade-request:before { content:"You: "; font-weight:bold; }
-		pre.regrade-response:before { content:"Regrader: "; font-weight:bold; }
-		
-		li, dt, dd { margin: 0em; }
-		ul { padding-left: 1em; }
-		dl, ul, div.percentage, div.extra { margin:0em 0em 0em 1em; }
-		div.percentage, dl.buckets, dl.breakdown, div.extra { 
-			border-left: thin solid rgba(0,0,0,0.25); padding-left:1ex; 
-		}
-		
-		.advice { font-style: italic; opacity:0.5;}
-
-		table.nopad { border-collapse: collapse; }
-		table.nopad, .nopad tr, .nopad td { border: none; padding:0em; margin:0em; }
-		.xp-bar { width: 100%; padding: 0em; white-space: pre; border: thin solid black; line-height:0%;}
-		.xp-bar span { height: 1em; padding:0em; margin: 0em; border: none; display:inline-block; }
-		.xp-earned { background: rgba(0,191,0,1); }
-		.xp-missed { background: rgba(255,127,0,0.5); }
-		.xp-future { background: rgba(0,0,0,0.125); }
-		
-		.snapshot { max-width: 50%; display: table; margin: 1ex auto; box-shadow: 0ex 0ex 1ex 0ex rgba(0,0,0,0.25); text-align: center; color: rgba(0,0,0,0.5);}
-		
-		.panel { font-size:66.66666%; margin: 1ex; padding:1ex; border: thin solid; border-radius:2ex; background-color:white; max-width:100%; }
-		pre.highlighted { border: thin solid #f0f0f0; white-space:pre-wrap; padding-right: 1ex; max-width:calc(100%-2ex); margin:0em; }
-		.highlighted .lineno { background:#f0f0f0; padding:0ex 1ex; color:#999999; font-weight:normal; font-style:normal; }
-		.highlighted .comment { font-style: italic; color:#808080; }
-		.highlighted .string { font-weight:bold; color: #008000; }
-		.highlighted .number { color: #0000ff; }
-		.highlighted .keyword { font-weight: bold; color: #000080; }
-
-		
-		.person { border: thin solid white; background-color: rgba(255,255,255,0.5); padding:0.25ex; }
-
-		dd table { border-collapse: collapse; width:100%; }
-		dd table td, dd table th { padding: 1ex; text-align: left; }
-		dd table tr:nth-child(2n) { background-color:rgba(255,127,0,0.125); }
-
-		dd.collapsed { display:none; }
-		dt.collapsed:before { content: "+ "; }
-		dt.collapsed:after { content: " …"; }
-		dt.collapsed { font-style: italic; }
-
-		.check.correct { background-color:rgba(0,255,0,0.25); }
-		.check.wrong { background-color:rgba(255,0,0,0.25); }
-		.check.partial { background-color:rgba(255,255,0,0.25); }
-		
-		blockquote { border:1px solid rgba(0,0,0,0.125); padding:1ex; border-radius:1ex; background-color:rgba(0,0,0,0.04); margin:1em 4em; }
-		
-		div.grade + div { white-space: pre-wrap; }
-
-		
-		/* input, select, option { font-size:100%; } */
-	</style>
-	<script src="codebox.js"></script>
-	<script>//<!--
-/**
- * 
- */
-function sensibleDateFormat(d) {
-	// toLocaleFormat has been deprecated and removed from some browsers, so do this manually
-	var s = d.toString().split(' '); // for day-of-week and timezone-specific time
-	var dow = s[0];
-	var tz = s[s.length-1];
-	var date = String(d.getFullYear()).padStart(4,'0')+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-	// var time = d.toTimeString().substr(0,5);
-	if (d.getHours() > 12) { var time = (d.getHours()-12) + (d.getMinutes() != 0 ? ':' + String(d.getMinutes()).padStart(2,'0') : '') + ' pm'; }
-	else { var time = d.getHours() + (d.getMinutes() != 0 ? ':' + String(d.getMinutes()).padStart(2,'0') : '') + (d.getHours() == 12 ? ' pm' : ' am'); }
-	if (time == '0 am') return dow + ' ' + date;
-	return dow + ' ' + date + ' ' + time;// + ' ' + tz;
-}
-
-function reformat(el) {
-	var dt = new Date(Number(el.getAttribute('ts')+'000'));
-	var now = new Date();
-	var ms = dt - now; // + if future, - if past
-	var as = Math.abs(Math.round(ms/1000));
-	var dayDiff = new Date(now.toDateString()) - new Date(dt.toDateString());
-	dayDiff /= 24*60*60*1000;
-	var relative = '';
-	if (as < 8*60*60) {
-		if (as < 60*60) {
-			var m = Math.floor(as/60);
-			relative = m + ' minute' + (m == 1 ? '' : 's') + (ms < 0 ? ' ago' : ' from now');
-		} else {
-			var h = Math.floor(as/3600);
-			var m = Math.floor((as/60)%60);
-			// var s = Math.floor(as%60);
-			relative = h + ':' + (m < 10 ? '0'+m : m) + /*':' + (s < 10 ? '0'+s : s) +*/ (ms < 0 ? ' ago' : ' from now');
-		}
-	} else if (dayDiff == 0) { // today in local timezone
-		if (ms < 0) relative = 'earlier ';
-		else relative = 'later ';
-		if (dt.getHours() < 12) relative += 'this morning';
-		else if (dt.getHours() < 17) relative += 'this afternoon';
-		else if (dt.getHours() < 20) relative += 'this evening';
-		else relative += 'tonight';
-	} else if (Math.abs(dayDiff) == 1) {
-		if (ms < 0) relative = 'yesterday';
-		else relative = 'tomorrow';
-		if (dt.getHours() < 12) relative += ' morning';
-		else if (dt.getHours() < 17) relative += ' afternoon';
-		else if (dt.getHours() < 20) relative += ' evening';
-		else relative += ' night';
-		relative = relative.replace('yesterday night', 'last night');
-	} else if (Math.abs(dayDiff) < 7) {
-		if (ms < 0) relative = 'last ';
-		relative += ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][dt.getDay()];
-		if (dt.getHours() < 12) relative += ' morning';
-		else if (dt.getHours() < 17) relative += ' afternoon';
-		else if (dt.getHours() < 20) relative += ' evening';
-		else relative += ' night';
-	} else {
-		var w = Math.round(as/(7*24*60*60));
-		relative = w + ' week' + (w == 1 ? '' : 's') + (ms < 0 ? ' ago' : ' from now');
-	}
-	el.innerHTML = sensibleDateFormat(dt) + ' (' + relative + ')';
-}
-
-function dotimes() {
-	function uclock() {
-		var fixers = document.getElementsByClassName('datetime');
-		for(var i=0; i<fixers.length; i+=1) {
-			reformat(fixers[i]);
-		}
-	}
-	uclock();
-	window.setInterval(uclock, 60*1000);
-}
-
-function docollapse() {
-	// something here does not work on safari, but I can't seem to figure out what
-	var hiders = document.getElementsByClassName('hide-outer');
-	for(var i=0; i<hiders.length; i+=1) {
-		hiders[i].firstElementChild.onclick = function(e) {
-			var parent = this.parentElement;
-			if (parent.classList.contains('hidden')) {
-				parent.classList.remove('hidden');
-				parent.classList.add('shown');
-			} else {
-				parent.classList.remove('shown');
-				parent.classList.add('hidden');
-			}
-		}
-	}
-	var breakdowns = document.querySelectorAll('table + dl dt');
-	for(var i=0; i<breakdowns.length; i+=1) {
-		breakdowns[i].onclick = function() {
-			if (this.classList.contains('collapsed')) {
-				this.nextElementSibling.classList.remove('collapsed');
-				this.classList.remove('collapsed');
-			} else {
-				this.nextElementSibling.classList.add('collapsed');
-				this.classList.add('collapsed');
-			}
-		}
-		breakdowns[i].nextElementSibling.classList.add('collapsed');
-		breakdowns[i].classList.add('collapsed');
-	}
-}
-	//--></script>
+	<title>Submissions – <?=$metadata['title']?></title>
+	<link rel="stylesheet" href="display.css" type="text/css"></link>
+	<script src="codebox_py.js"></script>
+	<script src="dates_collapse.js"></script>
 </head><body onload="dotimes(); docollapse(); highlight();">
 <?php
 
@@ -269,7 +78,23 @@ if ($isfaculty && array_key_exists('extension_decision', $_POST)) {
 		preFeedback("Invalid extension: missing rejection reason");
 	} else {
 		preFeedback("Processing extension request $_POST[extension_assignment]/$_POST[extension_student] (decision was $_POST[extension_decision])");
-		$gradefile = "uploads/$_POST[extension_assignment]/$_POST[extension_student]/.grade";
+		
+		$reqfile = "meta/requests/extension/$_POST[extension_assignment]"."-"."$_POST[extension_student]";
+		
+		$chatfile = "uploads/$_POST[extension_assignment]/$_POST[extension_student]/.chat";
+		if (file_exists($chatfile)) $chatter = json_decode(file_get_contents($chatfile), true);
+		else $chatter = array();
+
+		if (file_exists($reqfile)) {
+			$chatter[] = array(
+				'user'=>$_POST['extension_student'],
+				'show'=>rosterEntry($_POST['extension_student'])['name'],
+				'kind'=>'extension', 
+				'msg'=>file_get_contents($reqfile),
+			);
+			unlink($reqfile);
+		}
+		
 		$extendfile = "uploads/$_POST[extension_assignment]/$_POST[extension_student]/.extension";
 		if ($_POST['extension_decision'] == 'Approve') {
 			if (stripos($_POST['due'], 'now') !== False) {
@@ -278,38 +103,31 @@ if ($isfaculty && array_key_exists('extension_decision', $_POST)) {
 			$object = array();
 			if (array_key_exists('due', $_POST) && strtotime($_POST['due']) !== False)
 				$object['due'] = date('Y-m-d H:i', strtotime($_POST['due']. " America/New_York"));
-			if (array_key_exists('late', $_POST) && is_array(json_decode($_POST['late'], true)))
+			// TO DO: revisit late policy part
+			if (array_key_exists('late', $_POST) && is_numeric(json_decode($_POST['late'], true))) 
+				$object['late-days'] = json_decode($_POST['late'], true);
+			else if (array_key_exists('late', $_POST) && is_array(json_decode($_POST['late'], true))) 
 				$object['late-policy'] = json_decode($_POST['late'], true);
-			$object['close'] = closeTime($object); // needed to overwrite optional close in assignment itself
+			$object['close'] = closeTime($object + assignments()[$_POST['extension_assignment']]); // needed to overwrite optional close in assignment itself
 			if (!file_put($extendfile, json_encode($object))) preFeedback("Failed to write .extension file");
 			else {
-				preFeedback("Recorded new deadline of $object[due] for $_POST[extension_assignment]/$_POST[extension_student]");
-				if (file_exists("meta/requests/extension/$_POST[extension_assignment]"."-"."$_POST[extension_student]"))
-					unlink("meta/requests/extension/$_POST[extension_assignment]"."-"."$_POST[extension_student]");
-				if (file_exists($gradefile)) unlink($gradefile);
+				preFeedback("Recorded new deadline of $object[due] (close time ".prettyTime($object['close']).") for $_POST[extension_assignment]/$_POST[extension_student]");
 			}
-		} else {
-			$gradefile = "uploads/$_POST[extension_assignment]/$_POST[extension_student]/.grade";
-			if (file_exists($gradefile)) { $grade = json_decode(file_get_contents($gradefile), true); }
-			else $grade = array(
-				'student'=>$_POST['extension_student'],
-				'slug'=>$_POST['extension_assignment'],
-				'grade'=>0,
+			$chatter[] = array(
+				'user'=>$user, 
+				'show'=>$me['name'], 
+				'kind'=>'extension', 
+				'msg'=>'Set new deadline as '.$object['due'],
 			);
-			$grade['grader'] = $user;
-			// FIX ME: change comments to something else
-			if (!array_key_exists('comments', $grade)) $grade['comments'] = array();
-			if (!array_key_exists('extension', $grade['comments'])) $grade['comments']['extension'] = array();
-			$grade['comments']['extension'][] = 'Extension request denied; faculty comment: <q>'.htmlspecialchars($_POST['rejection']).'</q>';
-			if (!file_put($gradefile, json_encode($grade))) preFeedback("Failed to put decision into .grade");
-			else if (!file_append("uploads/$_POST[extension_assignment]/.gradelog", json_encode($grade)."\n")) preFeedback("Failed to put decision into .gradelog");
-			else {
-				preFeedback("Recorded rejection of extension request for $_POST[extension_assignment]/$_POST[extension_student]");
-				if (file_exists("meta/requests/extension/$_POST[extension_assignment]"."-"."$_POST[extension_student]"))
-					unlink("meta/requests/extension/$_POST[extension_assignment]"."-"."$_POST[extension_student]");
-				if (file_exists($extendfile)) unlink($extendfile);
-			}
+		} else {
+			$chatter[] = array(
+				'user'=>$user, 
+				'show'=>$me['name'], 
+				'kind'=>'extension', 
+				'msg'=>$_POST['rejection'],
+			);
 		}
+		if (!file_put($chatfile, json_encode($chatter))) preFeedback("Failed to put decision into .chat");
 	}
 }
 // If faculty and sent exemption decision, accept it
@@ -364,37 +182,26 @@ if (array_key_exists('partner_imbalance', $_POST)) {
 
 // TO DO: process other uploads, like assignments.json
 
-
-
 leavePre();
 
+/*
+preFeedback("PA09:");
+$tmp = asgn_details($user, 'PA09');
+print_r($tmp);
+leavePre();
+*/
 
 
 // $isself = true; $isstaff = false; // try real user view
 
 // show welcome line, which also helps TAs know if they are not logged in as themselves
-echo "<h1>".($isself ? "Welcome," : "Viewing as")." <span class='name'>$me[name]</span> ($user)</h1><a style='text-align:center; display:block;' href='//www.cs.virginia.edu/luther/COA1/F2018/'>Return to course page</a>\n";
+echo "<h1>".($isself ? "Welcome," : "Viewing as")." <span class='name'>$me[name]</span> ($user)</h1><a style='text-align:center; display:block;' href='$metadata[url]'>Return to course page</a>\n";
 
 if (!$isself) {
 	echo "<img src='picture.php?user=$user' alt='no picture of $user found' class='snapshot'/>";
 }
 
-// handle user-level uploads and requests
-if (array_key_exists('extension_request', $_POST) && (!array_key_exists('submission', $_FILES) || count($_FILES['submission']) == 0)) {
-	if (!array_key_exists('slug', $_POST)) {
-		user_error_msg("Received extension request without an associated assignment, which cannot be processed by this site. Please email your professor directly.");
-	} else {
-		if (file_exists("meta/requests/extension/$_POST[slug]-$user")) {
-			user_notice_msg("New extension request replacing old for $_POST[slug].");
-		}
-		if (!file_put("meta/requests/extension/$_POST[slug]-$user", $_POST['extension_request'])) {
-			user_error_msg("Internal server error prevented request from being posted. Please email your professor directly.");
-		} else {
-			user_success_msg("Extension request for <strong>$_POST[slug]</strong> posted; it will be reviewed and either your deadlines will change on this site or notice of non-extension will be posted as a grade comment under <strong>$_POST[slug]</strong> below. In most cases you will receive no notice of a decision other than a change to this site.");
-		}
-	}
-} // end extension request posting
-else if (array_key_exists("make_live", $_POST)) {
+if (array_key_exists("make_live", $_POST)) {
 	if (!preg_match('@^uploads/[^/]+/'.$user.'/.2[^/]*/[^/]*$@', $_POST['make_live'])) {
 		user_error_msg("Received roll-back request for a different user.");
 	} else if (!file_exists($_POST['make_live'])) {
@@ -405,6 +212,8 @@ else if (array_key_exists("make_live", $_POST)) {
 		$slug = basename(dirname($dname));
 		if (file_exists("$dname/$fname")) unlink("$dname/$fname");
 		if (file_exists("$dname/.autofeedback")) unlink("$dname/.autofeedback");
+		if (file_exists("$dname/.latefeedback")) unlink("$dname/.latefeedback");
+		if (file_exists("$dname/.autograde")) unlink("$dname/.autograde");
 		link($_POST['make_live'], "$dname/$fname");
 		ensure_file("meta/queued/$slug-$user", basename(dirname($_POST['make_live'])));
 		if (file_exists("$dname/.grade")) {
@@ -414,139 +223,14 @@ else if (array_key_exists("make_live", $_POST)) {
 		}
 	}
 } // end roll-back posting
-else if (array_key_exists('regrade_request', $_POST) && (!array_key_exists('submission', $_FILES) || count($_FILES['submission']) == 0)) {
-	if (!array_key_exists('slug', $_POST)) {
-		user_error_msg("Received regrade request without an associated assignment, which shouldn't be possible; please email your professor, describing what you did to get this message, to report this bug.");
-	} else if (strlen($_POST['regrade_request']) < 15) {
-		user_error_msg("Regrade requests should include a description of why they are being requested (i.e., how the original grade was incorrect).");
-	} else {
-		if (file_exists("meta/requests/regrade/$_POST[slug]-$user")) {
-			user_notice_msg("New regrade request replacing old for $_POST[slug].");
-		}
-		if (!file_put("meta/requests/regrade/$_POST[slug]-$user", $_POST['regrade_request'])) {
-			user_error_msg("Internal server error prevented request from being posted. Please email your professor directly.");
-		} else {
-			user_success_msg("Regrade request for <strong>$_POST[slug]</strong> posted; it will be reviewed and a response posted as part of the grade view under <strong>$_POST[slug]</strong> below. In most cases you will receive no notice of a decision other than a change posted there.");
-		}
-	}
-} // end regrade request posting
-else if (array_key_exists('submission', $_FILES)) {
-	if (count($_FILES['submission']['error']) == 1 && $_FILES['submission']['error'] == UPLOAD_ERR_NO_FILE) {
-		user_error_msg("Upload action received, but no file was sent by your browser. Please try again.");
-	} else if (!array_key_exists('slug', $_POST)) {
-		user_error_msg("Received file upload without an associated assignment, which shouldn't be possible; please email your professor, describing what you did to get this message, to report this bug.");
-	} else {
-		$slug = $_POST['slug'];
-		$details = assignments();
-		if (array_key_exists($slug, $details)) {
-			$details = $details[$slug];
-			// handle extensions, if any
-			if (file_exists("uploads/$slug/$user/.extension")) {
-				$extension = json_decode(file_get_contents("uploads/$slug/$user/.extension"), true);
-				$details = $extension + $details;
-			}
-			if (array_key_exists('files', $details)) {
-				if (assignmentTime('open', $details) > time() && !($isstaff && $isself)) {
-					user_error_msg("Tried to upload files for <strong>$slug</strong>, which is not yet open.");
-				} else if (closeTime($details) < time() && !($isstaff && $isself)) {
-					user_error_msg("Tried to upload files for <strong>$slug</strong>, which has already closed.");
-					//if ($_SERVER['PHP_AUTH_USER'] == 'lat7h') { echo "<pre>"; var_dump($details); var_dump(closeTime($details)); var_dump(time()); echo "</pre>"; }
-				} else {
-					$now = date_format(date_create(), "Ymd-His");
-					$realdir = "uploads/$slug/$user/.$now/";
-					$linkdir = "uploads/$slug/$user/";
-					foreach($_FILES['submission']['name'] as $i=>$fname) {
-						$name = $_FILES['submission']['name'][$i];
-						$error = $_FILES['submission']['error'][$i];
-						$tmp = $_FILES['submission']['tmp_name'][$i];
-						if ($error == UPLOAD_ERR_INI_SIZE) {
-							user_error_msg("Failed to receive <tt>".htmlspecialchars($name)."</tt> because it was larger than the server is set up to accept.");
-							continue;
-						}
-						if ($error == UPLOAD_ERR_FORM_SIZE) {
-							user_error_msg("Failed to receive <tt>".htmlspecialchars($name)."</tt> because it was larger than this site is set up to accept.");
-							continue;
-						}
-						if ($error == UPLOAD_ERR_PARTIAL) {
-							user_error_msg("Failed to receive <tt>".htmlspecialchars($name)."</tt>; only part of the file was received. Please try again.");
-							continue;
-						}
-						if ($error == UPLOAD_ERR_NO_FILE) {
-							user_error_msg("Failed to receive <tt>".htmlspecialchars($name)."</tt>; the file was not sent by your browser. Please try again.");
-							continue;
-						}
-						if ($error > UPLOAD_ERR_NO_FILE) {
-							user_error_msg("Failed to receive <tt>".htmlspecialchars($name)."</tt> because of an unexpected problem (upload error number $error). Please report this by email to your professor, attaching the file you attempted to submit to your email.");
-							continue;
-						}
-						$isok = is_string($details['files']);
-						if (!$isok) foreach($details['files'] as $pattern) {
-							if (fnmatch($pattern, $name, FNM_PERIOD)) $isok = True;
-						} else {
-							$isok = fnmatch($details['files'], $name, FNM_PERIOD);
-						}
-						if (!$isok || strpos($name, '/') !== FALSE || strpos($name, "\\") !== FALSE) {
-							user_error_msg("File <tt>".htmlspecialchars($name)."</tt> rejected because it is not one of the file names accepted for <strong>$slug</strong>.");
-							continue;
-						}
-						if (filesize($tmp) <= 0) {
-							user_error_msg("File <tt>".htmlspecialchars($name)."</tt> rejected because the file you upload was empty.");
-							continue;
-						}
-						if (!file_move($realdir . $name, $tmp)) {
-							user_error_msg("Failed to receive <tt>".htmlspecialchars($name)."</tt> because of an unexpected problem (might be cause by uploading twice in one second?).");
-							continue;
-						}
-						if (file_exists($linkdir . $name)) {
-							rename($linkdir . $name, $linkdir . 'backup-' . $name);
-						}
-						if (!link($realdir . $name, $linkdir . $name)) {
-							user_error_msg("Received <tt>".htmlspecialchars($name)."</tt> but failed to put it into the right location to be tested (not sure why; please report this to your professor).");
-							continue;
-						}
-						user_success_msg("Received <tt>".htmlspecialchars($name)."</tt> for <strong>$slug</strong>. File contents as uploaded shown below:" . studentFileTag("uploads/$slug/$user/$name"));
-						
-						if (file_exists($linkdir . '.partners')) { // copies to all partner directories too
-							foreach(explode("\n",trim(file_get_contents($linkdir . '.partners'))) as $u2) {
-								if (strlen($u2) > 3) {
-									$into = "uploads/$slug/$u2/";
-									if (!file_exists($into)) { umask(0); mkdir($into, 0777, true); }
-									if (file_exists($into.$name)) { unlink($into.$name); }
-									link($realdir . $name, $into . $name);
-								}
-							}
-						}
-						
-						if (file_exists($linkdir . '.grade')) unlink($linkdir . '.grade');
-						if (file_exists($linkdir . '.autofeedback')) unlink($linkdir . '.autofeedback');
-						if (!ensure_file("meta/queued/$slug-$user", ".$now")) {
-							user_notice_msg("Failed to queue <tt>".htmlspecialchars($name)."</tt> for automated feedback (not sure why; please report this to your professor).");
-							continue;
-						}
-						if (file_exists($linkdir . 'backup-' . $name)) {
-							unlink($linkdir . 'backup-' . $name);
-						}
-					}
-				}
-			} else {
-				user_error_msg("Tried to uploaded files for <strong>$slug</strong>, which does not accept uploads.");
-			}
-		} else {
-			user_error_msg("Tried to uploaded files for <strong>".htmlspecialchars($slug)."</strong>, which is not a valid assignment name.");
-		}
-	}
-} // end submission posting
-else if (array_key_exists('CONTENT_LENGTH', $_SERVER) && floatval($_SERVER['CONTENT_LENGTH']) > (1<<27)) {
-	user_error_msg("You appear to have attempted to send some very large file, which our server's security settings caused us not to receive.");
-}
-else if ($_GET['submitted']) {
-	user_error_msg("You appear to have attempted to submit something for ".$_GET['submitted']." but no file arrived. This sometimes happens if you had the submission page open for an extended time before attempting to submit; please try submitting again.");
-}
+
+
+leavePre();
 
 
 // display extra information, if applicable
 if (array_key_exists('groups', $me) && !($isstaff && $isself)) echo "<p>We list you as part of: $me[groups]</p>\n";
-if (array_key_exists('grader_name', $me)) echo "<p>Your primary grader is $me[grader_name].</p>\n";
+if (array_key_exists('grader_name', $me)) echo "<p>Your code coach is $me[grader_name].</p>\n";
 
 
 
@@ -592,7 +276,7 @@ if ($isstaff) {
 	the <a href="partners.php">project partner site</a>,
 	or the <a href="grade.php">the grading site</a>.
 	</div>
-	<?php if ($isself) { ?><div class="action">See a <a href="tafeedback.php">snapshot of student feedback</a> about your office hour help as of <?=prettyTime( filemtime('meta/ta_feedback.json'))?>.</div><?php } ?>
+	<?php if ($isself && file_exists('meta/ta_feedback.json')) { ?><div class="action">See a <a href="tafeedback.php">snapshot of student feedback</a> about your office hour help as of <?=prettyTime( filemtime('meta/ta_feedback.json'))?>.</div><?php } ?>
 	
 	<?php
 }
@@ -626,7 +310,7 @@ if ($isfaculty) {
 					<input type='submit' name='extension_decision' value="Deny"/>
 				</p><p>
 					New due date+time <input type='text' name='due'/>
-					and late policy (JSON array of ratios of points per day late, like </code>[0.9, 0.8]</code>): <input type='text' name='late'/>
+					and days of late period (number of days, like </code>2</code>): <input type='text' name='late'/>
 					<input type='submit' name='extension_decision' value="Approve"/>
 				</p><hr/>
 				</form>
@@ -692,280 +376,119 @@ if ($isfaculty) {
 	<?php
 }
 
-echo "<div class='hide-outer hidden'><strong class='hide-header'>Grade in course</strong><div class='hide-inner'>\n";
-echo "<div>Note: assignments start showing up in the denominator of the grade computation when they come due, even if not yet graded. this may cause grades to look artificially low between due date and grading date.</div>";
-echo grade_in_course($user);
-echo "</div></div>\n";
+////////////////////////////////////////////////////////////////////////////////
+////////////////////// collect user submission details /////////////////////////
+$mine = array();
+foreach(assignments() as $slug=>$details) {
+	$mine[$slug] = asgn_details($user, $slug);
+}
+$overall = cumulative_status($user, $mine);
+
+////////////////////////////////////////////////////////////////////////////////
+//////////////////////// show cumulative performance ///////////////////////////
+
+?><div class='hide-outer hidden'><strong class='hide-header'>Cumulative performance</strong><div class='hide-inner'>
+<table class='vbar' style='width:100%; table-layout:fixed'>
+<thead><tr><?php 
+foreach($overall as $grp=>$details)
+	echo "<th width='".(100*$details['weight'])."%'>$grp</th>";
+?></tr></thead><tbody><tr><?php
+foreach($overall as $slug=>$details) {
+	$ep = $details['earned'];
+	$fp = $details['future'];
+	$mp = $details['missed'];
+	echo "<td>";
+	echo svg_progress_bar($ep, $fp, $mp);
+
+	$per = ($details['earned']+$details['missed']);
+	$left = round(100*$details['future']);
+	if ($per == 0) {
+		echo "<br/>$left% to go";
+	} else {
+		$per = round(100*$details['earned']/$per);
+		echo "<br/>$per%, with $left% to go";
+	}
+
+	echo "</td>";
+}
+?></tr></tbody></table>
+</div></div>
+
+
+
+<table class="assignments"><thead>
+<tr><th>Task</th><th>Status</th><th>Deadline</th></tr>
+</thead><tbody><?php
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////// list assignments ////////////////////////////////////
+
+// get time
+$now = time();
+
+// preserve get arguments
+$plain_str = $_GET;
+if (array_key_exists('submitted', $plain_str)) { unset($plain_str['submitted']); }
+if (array_key_exists('task', $plain_str)) { unset($plain_str['task']); }
+$plain_str = http_build_query($plain_str);
+$ext = "&$plain_str";
+$end = "?$plain_str";
+
 
 // show assignments
-foreach(assignments() as $slug=>$details) {
-	
-	// handle extensions, if any
-	if (file_exists("uploads/$slug/$user/.extension")) {
-		$extension = json_decode(file_get_contents("uploads/$slug/$user/.extension"), true);
-		$details = $extension + $details;
-	}
-	
-	// parse dates
-	$open = assignmentTime('open', $details);
+foreach($mine as $slug=>$details) {
+
+	// compute time status
 	$due = assignmentTime('due', $details);
 	$close = closeTime($details);
-	$notmine = !applies_to($me, $details) || file_exists("uploads/$slug/$user/.excused");
-	if ($slug == 'Lab03') $notmine = false;
-
+	$open = assignmentTime('open', $details);
 	
-	// determine status and begin displaying assignment
-	$status = ((!$due || $open > time()) ? "pending" : ($due > time() ? "open" : ($close > time() ? "late" : "closed")));
-	if ($notmine) echo "<div class='assignment pending'>non-credit exercise: ";
-	else echo "<div class='assignment $status'>";
-	if (array_key_exists('link', $details))
-		echo "<a href='$details[link]'>";
-	else if (array_key_exists('writeup', $details))
-		echo "<a href='//www.cs.virginia.edu/luther/COA1/F2018/$details[writeup]'>";
-	else if (/*($notmine || $isstaff && $isself || $status != "pending") &&*/ array_key_exists('title', $details)) 
-		echo "<a href='//www.cs.virginia.edu/luther/COA1/F2018/".strtolower("$slug-$details[title]").".html'>";
-	echo "<strong>$slug</strong> ";
-	if (array_key_exists('writeup', $details))
-		echo "</a>";
-	else if (/*($notmine || $isstaff && $isself || $status != "pending") &&*/ array_key_exists('title', $details)) 
-		echo "$details[title]</a> ";
-	if ($notmine) {}
-	else if ($status == 'pending') echo "opens ".prettyTime($open)."\n";
-	else if ($status == 'closed') echo "has closed; it was due ".prettyTime($due)."\n";
-	else if ($status == 'late') echo "was due ".prettyTime($due)."; submitting now will incur late penalties.\n";
-	else echo "is due ".prettyTime($due)."\n";
-	
-	// pending assignments have no other content, unless staff viewing as staff
-	// (note: .extension files can change pending status for individual users)
-	if ($notmine || $status == 'pending' && !($isstaff && $isself)) { echo '</div>'; continue; }
-	
-	// collect a set of possible user actions for later use in form
-	$latesubmit = False;
-	$regrade = False;
-	$upload = (($status == 'open') || ($status == 'late')) || ($isstaff && $isself);
-	$haveuploaded = False;
+	$class = ((!$due || $open > $now) ? "pending" : ($due > $now ? "open" : ($close > $now ? "late" : "closed")));
 
+	$title = '';
+	if (array_key_exists('title', $details)) $title = $details['title'];
+	echo "<tr class='assignment $class'><td><a href='task.php?task=$slug$ext'><strong>$slug</strong> $title</a></td><td>";
 
-	// list latest submission, or assert no submission made
-	echo '<div class="submissions">';
-	$submitted = array();
-	foreach(glob("uploads/$slug/$user/*") as $path) {
-		$submitted[basename($path)] = '<a title="'.basename($path).'" href="download.php?file='.rawurlencode(explode('/',$path,2)[1]).'">'.basename($path).'</a> '.prettyTime(filemtime($path));
-		$haveuploaded = True;
-	}
-	if (array_key_exists('extends', $details)) {
-		foreach($details['extends'] as $slug2) {
-			foreach(glob("uploads/$slug2/$user/*") as $path) {
-				if (!array_key_exists(basename($path), $submitted)) {
-					$submitted[basename($path)] = '<a title="'.basename($path).'" href="download.php?file='.rawurlencode(explode('/',$path,2)[1]).'">'.basename($path).'</a> '.prettyTime(filemtime($path));
-					$haveuploaded = True;
-				}
-			}
-		}
-	}
-	if ($due == $close && array_key_exists('files', $details) && $details['group'] == 'Project') { // HACK! Move to assignments.json, perhaps as "late message":"..."
-		echo "<p class='big notice'>";
-		if ($status == 'open' or $status == 'pending') {
-			echo "Late submissions of this assignment will <strong>not</strong> be permitted. You or your partner <strong>must</strong> submit on time to receive any credit on this assignment.";
+	if (array_key_exists('excused', $details) && $details['excused']) echo 'excused';
+	else if (array_key_exists('.ext-req', $details)) echo 'extension requested';
+	else if (array_key_exists('.regrade-req', $details)) echo 'request awating review';
+	else if (array_key_exists('grade', $details)) echo 'full feedback available';
+	else if ($class == 'closed') {
+		if (array_key_exists('files', $details) && !array_key_exists('.files', $details))
+			echo 'not submitted';
+		else echo 'awaiting feedback';
+	} else if ($class == 'pending') echo 'not yet open';
+	else if (!array_key_exists('files', $details)) echo 'not submittable online';
+	else if (!array_key_exists('.files', $details)) echo 'not yet submitted';
+	else if (array_key_exists('autograde', $details)) {
+		if ($class == 'late') {
+			echo 'test cases available';
 		} else {
-			echo "Late submissions of this assignment are not permitted. ";
-			if (strpos($slug, 'heckpoint') > 0 && !$haveuploaded) {
-				echo "If you missed the deadline, see your grader in lab to get feedback on your game progress.";
+			$fbdelay = 0;
+			if (array_key_exists('fbdelay', $details)) $fbdelay = 60*60*$details['fbdelay'];
+			if (($isstaff && $isself) || $details['autograde']['created'] < time()-$fbdelay) {
+				echo 'preliminary feedback available';
+			} else {
+				echo 'awaiting preliminary feedback';
 			}
-		}
-		echo "</p>";
-	}
-	
-
-	if (file_exists("uploads/$slug/$user/.partners")) {
-		$partners = array();
-		foreach(explode("\n",trim(file_get_contents("uploads/$slug/$user/.partners"))) as $u2) {
-			if ($u2 != $user) {
-				$whom = rosterEntry($u2);
-				if ($whom) $partners[] = "$whom[name] ($u2)";
-			}
-		}
-		if (count($partners) > 0) {
-			echo "<div>Partnered with <span class='person'>".implode("</span> and <span class='person'>", $partners)."</span></div>";
-		}
-	}
-	if (!$haveuploaded) {
-		if (array_key_exists('files', $details)) {
-			if ($status == 'closed') { 
-				echo '<em>You did not submit this assignment.</em>';
-				$latesubmit = !($isstaff && $isself) && !($details['group'] == 'Lab'); 
-			}
-			else if ($status != 'pending') echo 'You have not yet submitted this assignment.';
-		} else {
-			echo 'Online submissions are not enabled for this assignment.';
-			$upload = False;
 		}
 	} else {
-		natcasesort($submitted);
-		echo "Your files (<a href='view.php?file=$slug/$user'>view all</a>) (<a href='download.php?file=$slug/$user&asuser=$user'>download all as .zip</a>):<ul class='filelist'><li>";
-		echo implode('</li><li>', $submitted);
-		echo '</li></ul>';
-		if (!array_key_exists('files', $details)) {
-			$upload = False;
-		}
-	}
-	echo "</div>\n";
-	
-	// list grade if present, or feedback if no grade, or nothing if neither is present
-	if (file_exists("uploads/$slug/$user/.grade")) {
-		$regrade = True;
-	} else if (file_exists("uploads/$slug/$user/.autofeedback")) {
-		if (($isstaff && $isself) || $status == 'closed' || !array_key_exists('fbdelay', $details) || filemtime("uploads/$slug/$user/.autofeedback") < time()-60*60*$details['fbdelay']) { // delay should be from submission, not feedback
-			echo "<div class='hide-outer hidden'><strong class='hide-header'>automated feedback</strong><div class='hide-inner'>\n";
-			display_grade_file("uploads/$slug/$user/.autofeedback");
-			echo "</div></div>\n";
-		} else if (array_key_exists('fbdelay', $details)) {
-			echo "<div class='advice'>This assignment is set up with a $details[fbdelay]-hour delay before showing you automated feedback. We encourage you to use that time to test your code yourself.</div>";
-		}
+		echo 'awaiting feedback';
 	}
 	
+	if (array_key_exists('.gcode', $details))
+		foreach($details['.gcode'] as $code)
+			if ($code == 'dropped' || $code == 'non-credit')
+				echo " ($code)";
+
+	echo '</td><td>';
 	
-	if ($latesubmit || $regrade || $upload) {
-		$submit_str = $_GET;
-		$submit_str['submitted'] = $slug;
-		$submit_str = http_build_query($submit_str);
-
-		$plain_str = $_GET;
-		if (array_key_exists('submitted', $plain_str)) { unset($plain_str['submitted']); }
-		$plain_str = http_build_query($plain_str);
-		//if ($_SERVER['PHP_AUTH_USER'] == 'lat7h') { preFeedback("Query string: $plain_str ".$_SERVER['QUERY_STRING']); var_dump($_GET); leavePre(); }
-		
-		
-		if ($latesubmit) {
-			if ($regrade) {
-				echo "<div class='hide-outer hidden'><strong class='hide-header'>grade</strong><div class='hide-inner'>\n";
-				display_grade_file("uploads/$slug/$user/.grade");
-			}
-			?><div class='hide-outer hidden'><strong class='hide-header'>late submission request</strong><div class='hide-inner'>
-			<?php 
-			if (file_exists("meta/requests/extension/$slug-$user")) {
-				?><p>You submitted a late submission request <?=prettyTime(filemtime("meta/requests/extension/$slug-$user"))?>; it is currently waiting for faculty decision. Note, to preserve privacy only faculty (not TAs) can see these requests. If yours has not been resolved after a full business day has passed, email your professor.</p><?php
-			} else {
-				?>
-				<p>
-					In most cases, deadlines are fixed and past-close submissions are not permitted.
-					However, there are cases where circumstances conspire to make deadlines unreachable.
-					If you had such a circumstance, describe it below and it will be considered by course staff.
-					Please include a proposed new due date in your request.
-				</p>
-				<form action="<?php echo $_SERVER['PHP_SELF']; ?>?<?php echo $plain_str; ?>" method="post" enctype="multipart/form-data">
-				<input type="hidden" name="slug" value="<?=$slug?>"/>
-				<textarea name="extension_request"></textarea><br/><input type="submit"/>
-				</form>
-				<?php
-			}
-			echo '</div></div>';
-			if ($regrade) {
-				echo "</div></div>\n";
-			}
-		}
-
-		if ($regrade && !$latesubmit) {
-			echo "<div class='hide-outer hidden'><strong class='hide-header'>grade</strong><div class='hide-inner'>\n";
-			display_grade_file("uploads/$slug/$user/.grade");
-			
-			if (strpos($slug, 'Lab') === 0) {
-				echo "<div>Lab regrades are handled directly by graders in lab meetings.</div>";
-			} else if (strpos($slug, 'Q') === 0) {
-				// echo "<div>Quiz regrades are based only on the comments you entered when taking the quiz.</div>";
-				// do not show regrade option
-			} else {
-
-				?><div class='hide-outer hidden'><strong class='hide-header'>regrade request</strong><div class='hide-inner'>
-				<?php 
-				if (file_exists("meta/requests/regrade/$slug-$user")) {
-					echo '<blockquote>';
-					echo htmlspecialchars(file_get_contents("meta/requests/regrade/$slug-$user"));
-					echo '</blockquote>';
-					?><p>You submitted the above regrade request <?=prettyTime(filemtime("meta/requests/regrade/$slug-$user"))?>; it is currently waiting for regrader decision.</p><?php
-				} else {
-					?>
-					<p>
-						Although uncommon, we do make mistakes in grading.
-						If you feel one of those mistakes happened to you, please describe why below:
-					</p>
-					<form action="<?php echo $_SERVER['PHP_SELF']; ?>?<?php echo $plain_str; ?>" method="post" enctype="multipart/form-data">
-					<input type="hidden" name="slug" value="<?=$slug?>"/>
-					<textarea name="regrade_request"></textarea><br/><input type="submit"/>
-					</form>
-					<?php
-				}
-				echo '</div></div>';
-			}
-			echo "</div></div>\n";
-			
-		}
-
-		if ($upload) {
-			if (array_key_exists('files', $details)) {
-?><form action="<?php echo $_SERVER['PHP_SELF']; ?>?<?php echo $submit_str; ?>" method="post" enctype="multipart/form-data">
-<input type="hidden" name="slug" value="<?=$slug?>"/><?php
-				$patterns = $details['files'];
-				if (is_string($patterns)) $patterns = array($patterns);
-				echo "<p>You may ".($haveuploaded ? 're' : '')."submit ";
-				foreach($patterns as $i=>$s) {
-					if ($i != 0) { echo " or "; }
-					echo "<tt>".htmlspecialchars($s)."</tt>";
-				}
-				if (!$isself) echo " for $me[name] ($user)";
-				echo ":</p>\n<center><input type='file' multiple='multiple' name='submission[]'/><input type='submit' name='upload' value='Upload file(s)'/></center>\n";
-?></form><?php
-			} else {
-				echo "<p>Course staff did not set up submissions for this assignment</p>\n";
-			}
-		}
-		
-		if ($isfaculty) {
-?><form action="<?php echo $_SERVER['PHP_SELF']; ?>" method="post" enctype="multipart/form-data">
-<input type="hidden" name="slug" value="<?=$slug?>"/><?php
-			$subs = glob("uploads/$slug/$user/.2*");
-			$sub_cnt = count($subs);
-			if ($sub_cnt > 0) {
-				sort($subs);
-				echo "<div class='hide-outer hidden'><strong class='hide-header'>$sub_cnt submissions (faculty view only; excludes by-partner submission)</strong><div class='hide-inner'>";
-				echo "<ol>";
-				foreach($subs as $when) {
-					$live = array();
-					$dead = array();
-					foreach(glob("$when/*") as $f) {
-						$orig = fileinode($f);
-						$curr = fileinode("uploads/$slug/$user/".basename($f));
-						if ($orig !== FALSE && $orig == $curr) $live[] = basename($f);
-						else $dead[] = $f;
-					}
-					$when = substr(basename($when),1);
-					echo "<li>".prettyTime(DateTime::createFromFormat('Ymd-His',$when)->getTimestamp());
-					if (count($dead)) {
-						 echo " (click to restore old copy of ";
-						 foreach($dead as $i=>$path) {
-							 if ($i != 0) echo " and ";
-							 echo "<button name='make_live' value='$path'>".basename($path)."</button>";
-						 }
-						 echo ")";
-					}
-					if (count($live)) {
-						 echo " (current copy of <tt>".implode('</tt> and <tt>', $live)."</tt>)";
-					}
-					echo "</li>";
-					
-				}
-				echo "</ol>";
-				echo "</div></div>";
-			}
-?></form><?php
-		}
-		
-	}
-	if ($slug == 'Project') {
-		echo 'We also encourage (but do not require) submitting a <a href="https://docs.google.com/forms/d/e/1FAIpQLSclqTmYTrGNerC158UMlN5A2jgbA7xquFpAlnQ4p_F1MGlOAw/viewform?usp=sf_link">partner evaluation</a>, which will be factored into overall grading';
-	}
-		
-	echo "</div>\n";
+	if ($open > $now) echo "opens " . prettyTime($open);
+	else if ($due > $now) echo "due " . prettyTime($due);
+	else if ($close > $now) echo "closes " . prettyTime($close);
+	else echo "closed " . prettyTime($close);
+	
+	echo '</td></tr>';
 }
 
-?></body></html>
+?></tbody></table>
+</body></html>

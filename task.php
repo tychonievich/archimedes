@@ -1,0 +1,413 @@
+<?php header('Content-Type: text/html; charset=utf-8'); 
+include "tools.php";
+logInAs();
+
+$slug = $_GET['task'];
+if (!array_key_exists($slug, assignments())) {
+	die("<p>Malformed request; task <q><tt>".htmlspecialchars($slug)."</tt></q> invalid.</p><script>setTimeout(function(){window.location = window.location.href.replace(/\/[^\/]*$/g, '');}, 5000);</script>");
+}
+
+?>﻿<!DOCTYPE html>
+<html><head>
+	<title><?=$slug?> – <?=$metadata['title']?> – <?=$me['name']?></title>
+	<link rel="stylesheet" href="display.css" type="text/css"></link>
+	<script src="codebox_py.js"></script>
+	<script src="dates_collapse.js"></script>
+</head><body onload="dotimes(); docollapse(); highlight();">
+<?php
+
+
+$details = asgn_details($user, $slug);
+
+
+
+function accept_submission() {
+	global $user, $details, $slug;
+	if (!array_key_exists('submission', $_FILES)) return;
+	if (count($_FILES['submission']['error']) == 1 && $_FILES['submission']['error'] == UPLOAD_ERR_NO_FILE) {
+		user_error_msg("Upload action received, but no file was sent by your browser. Please try again.");
+		return;
+	}
+	if (!array_key_exists('slug', $_POST) || ($_POST['slug'] != $_GET['task'])) {
+		user_error_msg("Received file upload without an associated assignment, which shouldn't be possible; if this persists, please email your professor, describing what you did to get this message, and attaching the file(s) to your email.");
+		return;
+	}
+	if (!array_key_exists('files', $details)) {
+		user_error_msg("Tried to uploaded files for <strong>$slug</strong>, which does not accept uploads.");
+		return;
+	}
+	if (assignmentTime('open', $details) > time() && !($isstaff && $isself)) {
+		user_error_msg("Tried to upload files for <strong>$slug</strong>, which is not yet open.");
+		return;
+	}
+	if (closeTime($details) < time() && !($isstaff && $isself)) {
+		user_error_msg("Tried to upload files for <strong>$slug</strong>, which has alreayd closed.");
+		return;
+	}
+	
+
+
+
+	$now = date_format(date_create(), "Ymd-His");
+	$realdir = "uploads/$slug/$user/.$now/";
+	$linkdir = "uploads/$slug/$user/";
+	$got = false;
+	foreach($_FILES['submission']['name'] as $i=>$fname) {
+		$name = $_FILES['submission']['name'][$i];
+		$error = $_FILES['submission']['error'][$i];
+		$tmp = $_FILES['submission']['tmp_name'][$i];
+		$got = true;
+		if ($error == UPLOAD_ERR_INI_SIZE) {
+			user_error_msg("Failed to receive <tt>".htmlspecialchars($name)."</tt> because it was larger than the server is set up to accept.");
+			continue;
+		}
+		if ($error == UPLOAD_ERR_FORM_SIZE) {
+			user_error_msg("Failed to receive <tt>".htmlspecialchars($name)."</tt> because it was larger than this site is set up to accept.");
+			continue;
+		}
+		if ($error == UPLOAD_ERR_PARTIAL) {
+			user_error_msg("Failed to receive <tt>".htmlspecialchars($name)."</tt>; only part of the file was received. Please try again.");
+			continue;
+		}
+		if ($error == UPLOAD_ERR_NO_FILE) {
+			user_error_msg("Failed to receive <tt>".htmlspecialchars($name)."</tt>; the file was not sent by your browser. Please try again.");
+			continue;
+		}
+		if ($error > UPLOAD_ERR_NO_FILE) {
+			user_error_msg("Failed to receive <tt>".htmlspecialchars($name)."</tt> because of an unexpected problem (upload error number $error). Please report this by email to your professor, attaching the file you attempted to submit to your email.");
+			continue;
+		}
+		$isok = is_string($details['files']);
+		if (!$isok) foreach($details['files'] as $pattern) {
+			if (fnmatch($pattern, $name, FNM_PERIOD)) $isok = True;
+		} else {
+			$isok = fnmatch($details['files'], $name, FNM_PERIOD);
+		}
+		if (!$isok || strpos($name, '/') !== FALSE || strpos($name, "\\") !== FALSE) {
+			user_error_msg("File <tt>".htmlspecialchars($name)."</tt> rejected because it is not one of the file names accepted for <strong>$slug</strong>.");
+			continue;
+		}
+		if (filesize($tmp) <= 0) {
+			user_error_msg("File <tt>".htmlspecialchars($name)."</tt> rejected because the file you upload was empty.");
+			continue;
+		}
+		if (!file_move($realdir . $name, $tmp)) {
+			user_error_msg("Failed to receive <tt>".htmlspecialchars($name)."</tt> because of an unexpected problem; try a second time, and if the problem persists email your professor the entire text of this error message and attach the file in question to your email.");
+			continue;
+		}
+		if (file_exists($linkdir . $name)) {
+			rename($linkdir . $name, $linkdir . '.backup-' . $name);
+		}
+		if (!link($realdir . $name, $linkdir . $name)) {
+			user_error_msg("Received <tt>".htmlspecialchars($name)."</tt> but failed to put it into the right location to be tested (not sure why; please report this to your professor).");
+			continue;
+		}
+		user_success_msg("Received <tt>".htmlspecialchars($name)."</tt> for <strong>$slug</strong>. File contents as uploaded shown below:" . studentFileTag("uploads/$slug/$user/$name"));
+		$got = true;
+		if (file_exists($linkdir . '.partners')) { // copies to all partner directories too
+			foreach(explode("\n",trim(file_get_contents($linkdir . '.partners'))) as $u2) {
+				if (strlen($u2) > 3) {
+					$into = "uploads/$slug/$u2/";
+					if (!file_exists($into)) { umask(0); mkdir($into, 0777, true); }
+					if (file_exists($into.$name)) { unlink($into.$name); }
+					link($realdir . $name, $into . $name);
+				}
+			}
+		}
+		
+		if (file_exists($linkdir . '.grade')) unlink($linkdir . '.grade');
+		if (file_exists($linkdir . '.autofeedback')) unlink($linkdir . '.autofeedback');
+		if (file_exists($linkdir . '.latefeedback')) unlink($linkdir . '.latefeedback');
+		if (file_exists($linkdir . '.autograde')) unlink($linkdir . '.autograde');
+		if (!ensure_file("meta/queued/$slug-$user", ".$now")) {
+			user_notice_msg("Failed to queue <tt>".htmlspecialchars($name)."</tt> for automated feedback (not sure why; please report this to your professor).");
+			continue;
+		}
+		if (file_exists($linkdir . '.backup-' . $name)) {
+			unlink($linkdir . '.backup-' . $name);
+		}
+	}
+	$details = asgn_details($user, $slug); // rebuild to see submissions
+	return $got;
+}
+
+
+
+function accept_extension() {
+	global $user, $slug, $details;
+	if (array_key_exists('extension_request', $_POST) && (!array_key_exists('submission', $_FILES) || count($_FILES['submission']) == 0)) {
+		if (!array_key_exists('slug', $_POST) || ($_POST['slug'] != $_GET['task'])) {
+			user_error_msg("Received request without an associated assignment, which cannot be processed by this site. Please email your professor directly.");
+		} else {
+			if (file_exists("meta/requests/extension/$slug-$user")) {
+				user_notice_msg("New extension request replacing old for $slug.");
+			}
+			if (!file_put("meta/requests/extension/$slug-$user", $_POST['extension_request'])) {
+				user_error_msg("Internal server error prevented request from being posted. Please email your professor directly.");
+			} else {
+				user_success_msg("Extension request for <strong>$slug</strong> posted; it will be reviewed and either your deadlines will change on this site or notice of non-extension will be posted as a comment below. In most cases you will receive no notice of a decision other than a change to this site.");
+				$details['.ext-req'] = $_POST['regrade_request'];
+			}
+		}
+	} // end extension request posting
+
+	if (array_key_exists('regrade_request', $_POST) && (!array_key_exists('submission', $_FILES) || count($_FILES['submission']) == 0)) {
+		if (!array_key_exists('slug', $_POST) || ($_POST['slug'] != $_GET['task'])) {
+			user_error_msg("Received request without an associated assignment, which cannot be processed by this site. Please email your professor directly.");
+		} else if (strlen($_POST['regrade_request']) < 12) {
+			user_error_msg("Requests must include more detail.");
+		} else {
+			if (file_exists("meta/requests/regrade/$slug-$user")) {
+				user_notice_msg("New request replacing old for $slug.");
+			}
+			if (!file_put("meta/requests/regrade/$slug-$user", $_POST['regrade_request'])) {
+				user_error_msg("Internal server error prevented request from being posted. Please email your professor directly.");
+			} else {
+				user_success_msg("Request to review feedback on <strong>$slug</strong> posted; it will be reviewed and a response posted below. In most cases you will receive no notice of a decision other than a change posted there.");
+				$details['.regrade-req'] = $_POST['regrade_request'];
+			}
+		}
+	} // end regrade request posting
+
+}
+
+
+
+if (array_key_exists('CONTENT_LENGTH', $_SERVER) && floatval($_SERVER['CONTENT_LENGTH']) > (1<<27)) {
+	user_error_msg("You appear to have attempted to send some very large file, which our server's security settings caused us not to receive.");
+}
+if (!accept_submission() && array_key_exists('submitted', $_GET) && $_GET['submitted']) {
+	user_error_msg("You appear to have attempted to submit something for ".$_GET['submitted']." but no file arrived. This sometimes happens if you had the submission page open for an extended time before attempting to submit; please try submitting again.");
+}
+accept_extension();
+
+
+
+
+
+function grader_fb($details) {
+	echo '<div class="hide-outer"><strong class="hide-header">code coach feedback</strong><div class="hide-inner">';
+	echo show_grade($details['grade']);
+	echo '</div></div>';
+}
+function testcase_fb($details) {
+	if (!array_key_exists('details', $details['autograde']))
+		return "Test case listing not enabled for $details[slug]; showing preliminary feedback instead.\n".preliminary_fb($details);
+	
+	echo '<div class="hide-outer"><strong class="hide-header">test case feedback</strong><div class="hide-inner">';
+	if (array_key_exists('missed', $details['autograde'])
+	&& count($details['autograde']['missed']) > 0) {
+		//* // show one test case
+		echo '<p>As of ';
+		echo prettyTime($details['autograde']['created']);
+		echo ', passed ';
+		echo count($details['autograde']['details']) - count($details['autograde']['missed']);
+		echo ' test cases</p><p>Example failed test: <code>';
+		echo htmlspecialchars($details['autograde']['missed'][0]);
+		echo '</code></p>';
+		/*/ // show all test cases
+		echo 'Failed test cases as of ';
+		echo prettyTime($details['autograde']['created']);
+		echo ':<ul><li><pre>';
+		echo implode('</pre></li><li><pre>', $details['autograde']['missed']);
+		echo '</pre></li></ul>';
+		//*/
+	} else {
+		echo 'Passed all automated tests.'; 
+	}
+	echo '</div></div>';
+}
+function preliminary_fb($details) {
+	global $isself, $isstaff;
+	$fbdelay = 0;
+	if (array_key_exists('fbdelay', $details)) $fbdelay = 60*60*$details['fbdelay'];
+	if (($isstaff && $isself) || $details['autograde']['created'] < time()-$fbdelay) {
+		echo '<div class="hide-outer"><strong class="hide-header">preliminary feedback</strong><div class="hide-inner"><pre class="feedback stdout">';
+		echo $details['autograde']['feedback'];
+		echo '</pre></div></div>';
+	} else {
+		echo '<div>Preliminary feedback will become available ';
+		echo prettyTime($details['autograde']['created'] + $fbdelay);
+		echo '</div>';
+	}
+}
+
+
+
+
+
+
+
+
+
+
+
+$plain_str = $_GET;
+if (array_key_exists('submitted', $plain_str)) { unset($plain_str['submitted']); }
+$plain_str = http_build_query($plain_str);
+$ext = "&$plain_str";
+$end = "?$plain_str";
+
+// get times
+$now = time();
+$due = assignmentTime('due', $details);
+$close = closeTime($details);
+$open = assignmentTime('open', $details);
+
+// meta-properties
+$submitted = array_key_exists('.files', $details);
+$submittable = $open < $now && $close > $now && array_key_exists('files', $details);
+$show_cases =  $due < $now 
+	&& $submitted
+	&& !array_key_exists('.ext-req', $details);
+$extendable = ($now < $due || !$submitted) 
+	&& array_key_exists('files', $details) 
+	&& !array_key_exists('.files', $details) 
+	&& ($details['group'] != 'Lab');
+
+// time category
+$status = ($now < $open) ? 'is not yet open' 
+		:( ($now < $due) ? 'is due ' . prettyTime($due)
+		:( ($now < $close) ? 'was due '.prettyTime($due).'; you may submit fixes until ' . prettyTime($close) 
+		:( 'has closed')));
+
+// display basic information
+echo "<h1>$slug – ";
+if (array_key_exists('title', $details)) echo $details['title'];
+echo "</h1>";
+
+if (array_key_exists('link', $details))
+	echo "<p><a href='$metadata[writeup_prefix]$details[link]'>Task description</a>.</p>";
+else if (array_key_exists('writeup', $details))
+	echo "<p><a href='$metadata[writeup_prefix]$details[writeup]'>Task description</a>.</p>";
+else if (array_key_exists('title', $details)) {
+	echo "<p><a href='$metadata[writeup_prefix]";
+	echo strtolower($slug);
+	echo "-";
+	echo strtolower($details['title']);
+	echo ".html'>Task description</a>.</p>";
+}
+echo "<p>Return to <a href='index.php$end'>Assignments list</a> or <a href='$metadata[url]'>main course page</a>.</p>";
+
+echo "<p>This assignment $status.</p>";
+
+function file_download_link($name, $path) {
+	$dl = rawurlencode(explode('/',$path,2)[1]);
+	$mtime = prettyTime(filemtime($path));
+	return "<a title='$name' href='download.php?file='$dl'>$name</a> $mtime";
+}
+
+
+// display submission status
+echo '<div class="submissions">';
+if ($submitted) {
+	echo "Your files (<a href='view.php?file=$slug/$user$ext'>view all</a>) (<a href='download.php?file=$slug/$user$ext'>download all as .zip</a>):<ul class='filelist'>";
+	foreach($details['.files'] as $name=>$path) {
+		echo "<li>";
+		echo file_download_link($name, $path);
+		echo "</li>";
+	}
+	echo '</ul>';
+} else if (array_key_exists('files', $details)) {
+	echo 'You have not yet submitted this assignment.';
+} else {
+	echo "<p>Online submissions are not enabled for this assignment.</p>";
+}
+echo '</div>';
+
+
+
+// display feedback
+if (($close < $now)
+&& array_key_exists('grade', $details)
+&& !array_key_exists('.ext-req', $details)) {
+	grader_fb($details);
+} else if (array_key_exists('.files', $details)) {
+	if (($due < $now)
+	&& array_key_exists('autograde', $details)
+	&& !array_key_exists('.ext-req', $details)) {
+		testcase_fb($details);
+	} else if (array_key_exists('autograde', $details)
+	&& array_key_exists('feedback', $details['autograde'])) {
+		preliminary_fb($details);
+	}
+}
+
+// display upload tag
+if ($submittable) {
+	echo "<form action='$_SERVER[SCRIPT_NAME]?submitted=$slug$ext' method='post' enctype='multipart/form-data'>
+	<input type='hidden' name='slug' value='$slug'/>
+	<p>You may ";
+	if (array_key_exists('.files', $details) && count($details['.files']) > 0)
+		echo 're';
+	echo "submit ";
+	$patterns = $details['files'];
+	if (is_string($patterns)) $patterns = array($patterns);
+	foreach($patterns as $i=>$s) {
+		if ($i != 0) echo " or ";
+		echo "<tt>";
+		echo htmlspecialchars($s);
+		echo "</tt>";
+	}
+	if (!$isself) {
+		echo " for ";
+		echo rosterEntry($user)['name'];
+		echo " ($user)";
+	}
+	echo ":</p><center><input type='file' multiple='multiple' name='submission[]'/><input type='submit' name='upload' value='Upload file(s)'/></center></form>";
+	
+}
+
+
+if (array_key_exists('.chat', $details)) {
+	echo "<div class='group conversation'><div>Past conversations with course staff:</div>";
+	foreach($details['.chat'] as $note) {
+		echo '<pre class="';
+		echo $note['user'] == $user ? 'request' : 'response';
+		echo '">';
+		echo htmlspecialchars($note['msg']);
+		echo "</pre>";
+	}
+	echo "</div>";
+}
+
+// extension
+if (array_key_exists('.ext-req', $details)) {
+	echo "<div class='group conversation'>";
+	echo '<p>You have a pending extension request awaiting faculty approval:</p>';
+	// edit?
+	echo '<pre class="request">';
+	echo htmlspecialchars($details['.ext-req']);
+	echo '</pre></div>';
+} else if ($extendable) {
+	echo "<div class='group extension'>";
+	echo '<p>If special circumstances will prevent your submitting on time, please describe why and propose a new deadline:</p>';
+	echo "<form action='$_SERVER[SCRIPT_NAME]$end' method='post' enctype='multipart/form-data'>
+	<input type='hidden' name='slug' value='$slug'/>
+	<textarea name='extension_request'></textarea><br/><input type='submit' value='request deadline extension'/>
+	</form>";
+	echo "</div>";
+}
+
+// regrade
+if (array_key_exists('.regrade-req', $details)) {
+	echo "<div class='group conversation'>";
+	echo '<p>You have a pending feedback review request awaiting staff review:</p>';
+	echo '<pre class="regrade-request">';
+	echo htmlspecialchars($details['.regrade-req']);
+	echo '</pre></div>';
+	// edit?
+} else if (array_key_exists('grade', $details)) {
+	echo "<div class='group regrade'>";
+	echo '<p>If the above feedback does not correctly characterize your submission, please describe what we misunderstood:</p>';
+	echo "<form action='$_SERVER[SCRIPT_NAME]$end' method='post' enctype='multipart/form-data'>
+	<input type='hidden' name='slug' value='$slug'/>
+	<textarea name='regrade_request'></textarea><br/><input type='submit' value='request review of feedback'/>
+	</form>";
+	echo "</div>";
+}
+
+?>
+
+
+</body></html>

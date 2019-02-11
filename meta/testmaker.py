@@ -294,7 +294,7 @@ class Tester:
                         exec(check, {'tree':user[1]})
             except ValueError as ex:
                 return [{
-                    'name':'Check for coding rules: '+str(ex),
+                    'name':'Coding rules: '+str(ex),
                     'correct':False,
                     'weight':1,
                     'feedback':str(ex),

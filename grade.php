@@ -207,7 +207,7 @@ input + input { margin-left:0.5ex; }
 		.highlighted .number { color: #0000ff; }
 		.highlighted .keyword { font-weight: bold; color: #000080; }
 	</style>
-	<script type="text/javascript" src="codebox.js"></script>
+	<script type="text/javascript" src="codebox_py.js"></script>
 	<script>
 /**
  * This function is supposed to change all self-sizing panels based on a page resize
@@ -665,6 +665,7 @@ function showGradingView($slug, $student, $rubric, $comments, $nof='') {
 	echo "<input type='button' value='skip' onclick='skip(".json_encode("$slug\n$student").")'/>";
 	
 	echo '</td></tr></tbody></table>';
+
 }
 
 
@@ -826,6 +827,7 @@ function rubricTree($rubric, $comments, $grade, $prefix, $path="", $name="") {
 		echo '</p>';
 	}
 }
+
 
 /*
 Home: list of assignments that have open grades, and how many

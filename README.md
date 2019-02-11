@@ -12,6 +12,7 @@ The name "Archimedes" is not carefully selected.
 When I asked our sysadmins for a server to run the second version of this on
 they gave me one from a rack of computers another faculty member had recently had,
 and the former faculty member (I don't even know who they were) had named the computer in question "Archimedes".
+We don't use that computer anymore, but the name stuck.
 
 
 # Directory Structure
@@ -167,24 +168,77 @@ An assignment group is counted for a given user in the following cases:
 -   Otherwise, it is counted.
 
 
-## `buckets.json` and `.rubric`
+## Rubrics
 
 Rubrics are specified in JSON objects.
-Three kinds of rubrics are currently available.
+Two kinds of rubrics are currently available.
 
 ### Percentages
 
-The default grading system unless `buckets.json` as been created;
+The default grading system;
 it requires a number and a comment for every grade,
 allowing just one number and just one comment.
 
-```json
-{"kind":"percentage"}
-```
+Rubric specification
+:   ````json
+    {"kind":"percentage"}
+    ````
 
-In the event that you want to be able to add multiple free-form comments, *buckets* are a good way of avoiding multiple jeopardy.
-If you don't like the structure of *buckets*, you could also get free-form graded comments by using `{"kind":"breakdown","parts":[]}`{.json} to get just the multipliers list.
-These will be multiplied, not added, which is nicer to the student: ten −10% comments will be `pow(0.9, 10)`, or about 35%.
+Grade specification
+:   ````json
+    {"kind":"percentage"
+    ,"ratio":0.85
+    ,"comments":"Works, but not well designed, which seems like a B to me"
+    }
+    ````
+
+### Hybrid
+
+This is useful when correctness can be evaluated by automated testing
+and humans used to provide other forms of feedback.
+
+The human component includes a set of checkboxes,
+a free-form comment space,
+and the option to add a full-score multiplier to handle prohibited behavior such as hard-coding.
+
+The automated component contains both on-time and late scores,
+as well as how much to deduct the late score.
+
+Rubric specification
+:   ````json
+    {"kind":"hybrid"
+    ,"auto-weight":0.4
+    ,"late-penalty":0.5
+    ,"auto-late-days":2
+    ,"human":[{"name":"good variable names","weight":2}
+             ,"proper indentation"
+             ,"docstrings present"
+             ,{"name":"well-formatted docstrings (will be worth points in later assignments)", "weight":0}
+             ,"effort at reasonable design"
+             ,"complicated parts (if any) properly commented"
+             ]
+    }
+    ````
+
+Grade specification
+:   ````json
+    {"kind":"hybrid"
+    ,"auto":0.7931034482758621
+    ,"auto-late":0.9310344827586207
+    ,"late-penalty":0.5
+    ,"auto-weight":0.4
+    ,"human":[{"weight":2,"ratio":0.5,"name":"good variable names"}
+             ,{"weight":1,"ratio":1,"name":"proper indentation"}
+             ,{"weight":1,"ratio":1,"name":"docstrings present"}
+             ,{"weight":0,"ratio":0.5,"name":"well-formatted docstrings (will be worth points in later assignments)"}
+             ,{"weight":1,"ratio":0,"name":"effort at reasonable design"}
+             ,{"weight":1,"ratio":1,"name":"complicated parts (if any) properly commented"}
+             ]
+    ,"comments":"In the future, you might find docs.python.org/3/ useful"
+    ,".mult":{"kind":"percentage","ratio":0.8,"comments":"professionalism penalty"}
+    }
+    ````
+
 
 ### Breakdowns
 
@@ -207,18 +261,6 @@ Every breakdown also allows some additional multiplicative percentages, suitable
 ```
 
 
-### Buckets
-
-```json
-{"kind":"buckets"
-,"buckets":[{"name":"notes","score":1.0,"spillover":0}
-           ,{"name":"mistakes","score":0.9,"spillover":3}
-           ,{"name":"moderate errors","score":0.7,"spillover":2}
-           ,{"name":"serious errors","score":0.5,"spillover":-3.5}
-           ,{"name":"score-zeroing errors","score":0.0,"spillover":0}
-           ]
-}
-```
 
 ### Binary
 
@@ -310,7 +352,7 @@ However, it should be fairly straightforward to port to other systems:
 1.  Install Apache (or any other PHP-enabled web server).
 
 2.  This project uses the most widely deployed database in the world: a directory-tree file system.
-    Internally, it assumes a *nix file system on a local drive;
+    Internally, it assumes a POSIX file system on a local drive;
     file systems that do not use the `/` directory separator,
     that do not skip `.dotfiles` in wildcard matches,
     or that cut corners commonly cut in network-mounted file systems
@@ -500,3 +542,41 @@ severities:
             max: 0.8
     score-zeroing: 1.0
 ````
+
+
+
+```
+To do: add this kind of rubric (and maybe remove the old ones?)
+
+{"kind":"hybrid"
+,"auto":4
+,"human":6
+,"auto_late_penalty":0.5
+,"auto_late_days":2
+,"human_check":[{"name":"good variable names","weight":2}
+			   ,"proper indentation"
+			   ,"docstrings present"
+			   ,{"name":"well-formatted docstrings (will be worth points in later assignments)", "weight":0}
+			   ,"effort at reasonable design"
+			   ,"complicated parts (if any) properly commented"
+			   ]
+}
+
+Store the human rubric in the .grade to protect against rubric changes?
+Or not to allow easy change of weights post-hoc?
+Perhaps a compromise: store, and add a "rubric change" UI
+
+{"details":{"auto":0.7931034482758621
+           ,"auto_late":0.9310344827586207
+           ,"human":[{"weight":2,"ratio":0.5,"name":"good variable names"}
+                    ,{"weight":1,"ratio":1,"name":"proper indentation"}
+                    ,{"weight":1,"ratio":1,"name":"docstrings present"}
+                    ,{"weight":0,"ratio":0.5,"name":"well-formatted docstrings (will be worth points in later assignments)"}
+                    ,{"weight":1,"ratio":0,"name":"effort at reasonable design"}
+                    ,{"weight":1,"ratio":1,"name":"complicated parts (if any) properly commented"}
+                    ]
+           }
+,"grade":0.7448275862068965
+}
+
+```
