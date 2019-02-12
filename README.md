@@ -191,13 +191,15 @@ The default grading system;
 it requires a number and a comment for every grade,
 allowing just one number and just one comment.
 
-Rubric specification
-:   ````
+- **Rubric specification**
+    
+    ````json
     {"kind":"percentage"}
     ````
 
-Grade specification
-:   ````
+- **Grade specification**
+
+    ````
     {"kind":"percentage"
     ,"ratio":0.85
     ,"comments":"Works, but not well designed, which seems like a B to me"
@@ -216,8 +218,9 @@ and the option to add a full-score multiplier to handle prohibited behavior such
 The automated component contains both on-time and late scores,
 as well as how much to deduct the late score.
 
-Rubric specification
-:   ````
+- **Rubric specification**
+
+    ````
     {"kind":"hybrid"
     ,"auto-weight":0.4
     ,"late-penalty":0.5
@@ -232,8 +235,9 @@ Rubric specification
     }
     ````
 
-Grade specification
-:   ````
+- **Grade specification**
+
+    ````
     {"kind":"hybrid"
     ,"auto":0.7931034482758621
     ,"auto-late":0.9310344827586207
