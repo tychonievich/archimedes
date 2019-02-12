@@ -108,3 +108,10 @@ div.grade + div { white-space: pre-wrap; }
 table.feedback tr td:first-child { text-align: center; }
 table.feedback tr td { border: rgba(0,0,0,0) 0.5ex solid; }
 table.feedback tr.break td { border: thin solid black; padding:0; }
+
+div.item, div.comment { display: flex; margin-bottom:0.5ex; border-bottom: 0.125ex solid rgba(0,0,0,0.25);}
+div.item label { white-space:pre; color:rgba(0,0,0,0.5); }
+span.label { display: inline-block; border-left: 0.125ex solid rgba(0,0,0,0.25); padding-left:0.5ex; }
+label.full { background: rgba(0,255,0,0.125); }
+label.partial { background: rgba(255,255,0,0.125); }
+label.none { background: rgba(255,0,0,0.125); }

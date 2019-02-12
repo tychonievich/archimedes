@@ -88,7 +88,7 @@ if (array_key_exists('addgrade', $_REQUEST)) {
 function percent_tag($id, $text, $percent, $comment) {
     return "<div class='percentage' id='$id'>
         <input type='text' id='$id|percent' value='$percent' />% $text
-        <br/>Comment: <input type='text' id='$id|comment' value='$comment' />
+        <div class='comment'>Comment: <input type='text' id='$id|comment' value='$comment' /></div>
     </div>";
 }
 
@@ -101,9 +101,9 @@ function item_tag($id, $name, $select=False) {
         $sf = ''; $sp = ''; $sn = '';
     }
     return "<div class='item'>
-        <label><input type='radio' name='$id' value='1.0' $sf/> Full</label>
-        <label><input type='radio' name='$id' value='0.5' $sp/> Partial</label>
-        <label><input type='radio' name='$id' value='0.0' $sn/> None</label>
+        <label class='full'><input type='radio' name='$id' value='1.0' $sf/> 1</label>
+        <label class='partial'><input type='radio' name='$id' value='0.5' $sp/> ½</label>
+        <label class='none'><input type='radio' name='$id' value='0.0' $sn/> 0</label>
         <span class='label'>$name</span>
     </div>";
 }
@@ -160,7 +160,7 @@ function hybrid_tree($details) {
         <div class='items' id='$id|items'>
             $items
         </div>
-        Comment: <input type='text' id='$id|comment' value='$comment' />
+        <div class='comment'>Comment: <input type='text' id='$id|comment' value='$comment' /></div>
         <div class='hide-outer hidden'><strong class='hide-header'>Multiplier (for special cases)</strong><div class='hide-inner'>
         $mult
         </div></div>

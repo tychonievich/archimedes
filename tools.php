@@ -674,6 +674,7 @@ function staffDropdown($name) {
 
 $_rubs = array();
 function rubricOf($slug) {
+    global $_rubs;
     if (array_key_exists($slug, $_rubs))
         return $_rubs[$slug];
     
