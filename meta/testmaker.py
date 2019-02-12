@@ -97,6 +97,8 @@ def ex_msg(ex):
     return smsg, msg
 
 def case_str(case, func='f'):
+    if 'src_re' in case:
+        return 'source code regex: '+case['src_re']
     ans = ''
     if case.get('args',()) or case.get('kwargs',{}):
         ans += func+'('
@@ -238,6 +240,12 @@ class Tester:
         if obj.get('loops') is False: self.astchecks.append(no_loops)
         if 'ast' in obj:
             self.astchecks.append(compile(obj['ast'], 'ast_check.py', 'exec'))
+        
+        self.re = []
+        for s in obj.get('re',[]):
+            self.re.append([True, re.compile(s)])
+        for s in obj.get('ban_re',[]):
+            self.re.append([False, re.compile(s)])
 
         if 'solution' in obj:
             self.solution = self.compile(obj['solution'], loose_rules=True)
@@ -299,8 +307,10 @@ class Tester:
                     'weight':1,
                     'feedback':str(ex),
                 }]
-                
             results = []
+
+            with open(filename) as _: src = _.read()
+                
             for case in self.cases:
                 report = {
                     'name':case['name'],
@@ -312,6 +322,13 @@ class Tester:
                 if 'kwargs' in case: report['kwargs'] = case['kwargs']
                 if 'input' in case: report['input'] = case['input']
                 if case.get('hide'): report['hide'] = True
+                
+                if 'src_re' in case:
+                    import re
+                    if re.compile(case['src_re']).search(src):
+                        report['correct'] = True
+                    results.append(report)
+                    continue
                 
                 
                 try:

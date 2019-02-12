@@ -19,6 +19,12 @@ if (!array_key_exists($slug, assignments())) {
 
 $details = asgn_details($user, $slug);
 
+$plain_str = $_GET;
+if (array_key_exists('submitted', $plain_str)) { unset($plain_str['submitted']); }
+$plain_str = http_build_query($plain_str);
+$ext = "&$plain_str";
+$end = "?$plain_str";
+
 
 
 function accept_submission() {
@@ -181,6 +187,10 @@ if (!accept_submission() && array_key_exists('submitted', $_GET) && $_GET['submi
 }
 accept_extension();
 
+if (array_key_exists('submitted', $_GET) && $_GET['submitted']) {
+    echo "<p>Return to <a href='task.php$end'>this assignment's submission page</a> or the <a href='index.php$end'>assignments list</a> or the <a href='$metadata[url]'>main course page</a>.</p>";
+    die('</body></html>');
+}
 
 
 function show_grade($gradeobj) {
@@ -310,11 +320,6 @@ function preliminary_fb($details) {
 
 
 
-$plain_str = $_GET;
-if (array_key_exists('submitted', $plain_str)) { unset($plain_str['submitted']); }
-$plain_str = http_build_query($plain_str);
-$ext = "&$plain_str";
-$end = "?$plain_str";
 
 // get times
 $now = time();
