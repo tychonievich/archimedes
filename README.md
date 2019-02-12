@@ -199,7 +199,7 @@ allowing just one number and just one comment.
 
 - **Grade specification**
 
-    ````
+    ````json
     {"kind":"percentage"
     ,"ratio":0.85
     ,"comments":"Works, but not well designed, which seems like a B to me"
@@ -220,7 +220,7 @@ as well as how much to deduct the late score.
 
 - **Rubric specification**
 
-    ````
+    ````json
     {"kind":"hybrid"
     ,"auto-weight":0.4
     ,"late-penalty":0.5
@@ -237,7 +237,7 @@ as well as how much to deduct the late score.
 
 - **Grade specification**
 
-    ````
+    ````json
     {"kind":"hybrid"
     ,"auto":0.7931034482758621
     ,"auto-late":0.9310344827586207
