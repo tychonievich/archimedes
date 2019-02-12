@@ -674,6 +674,7 @@ function staffDropdown($name) {
 
 $_rubs = array();
 function rubricOf($slug) {
+    global $_rubs;
     if (array_key_exists($slug, $_rubs))
         return $_rubs[$slug];
     
@@ -930,7 +931,7 @@ function cumulative_status($student, &$progress=False) {
     if ($progress === False) {
         $progress = array();
         foreach(assignments() as $slug=>$details) {
-            $progress[$slug] = asgn_details($user, $slug);
+            $progress[$slug] = asgn_details($student, $slug);
         }
     }
     $cg = coursegrade();
@@ -1079,79 +1080,6 @@ function score_of_task($gradeobj) {
     }
 
     return $score;
-}
-
-function show_grade($gradeobj) {
-    //preFeedback('Grade object');
-    //print_r($gradeobj);
-    //leavePre();
-    if ($gradeobj['kind'] == 'percentage') return implode('',array(
-        "<div class='percentage'>",
-        round($gradeobj['ratio']*100, 3),
-        "%</div> ",
-        htmlspecialchars($gradeobj['comments'])
-    ));
-    $ans = array();
-    $ans[] = '<table class="feedback"><tbody>';
-
-    // correctness
-    if (!array_key_exists('auto-weight', $gradeobj) || $gradeobj['auto-weight'] > 0) {
-        $score = $gradeobj['auto'];
-        _show_grade_obj_row($ans, $score, "Functional correctness (as determined by test cases)", true);
-        $lat = array_key_exists('auto-late', $gradeobj) ? $gradeobj['auto-late'] : $score;
-        if ($lat > $score) {
-            _show_grade_obj_row($ans, $lat, "Late submission functional correctness (as determined by test cases)", true);
-            $pen = array_key_exists('late-penalty', $gradeobj) ? $gradeobj['late-penalty'] : 0.5;
-            $score = $score + ($lat-$score)*$pen;
-        }
-
-        $ans[] = '<tr class="break"><td colspan="2"></td></tr>';
-    }
-    
-    // code coach feedback
-    $human = 0;
-    $human_denom = 0;
-    foreach($gradeobj['human'] as $entry) {
-        $r = $entry['ratio'];
-        $human += $entry['weight'] * $r;
-        $human_denom += $entry['weight'];
-        _show_grade_obj_row($ans, $r, $entry['name']);
-    }
-
-    // comment
-    if (array_key_exists('comments', $gradeobj))
-        _show_grade_obj_row($ans, false, $gradeobj['comments']);
-    
-    $ans[] = '<tr class="break"><td colspan="2"></td></tr>';
-
-    // combined
-    $aw = array_key_exists('auto-weight', $gradeobj) ? $gradeobj['auto-weight'] : 0.5;
-    $score = $human/$human_denom*(1-$aw) + $score*$aw;
-    if (array_key_exists('.mult', $gradeobj)) {
-        // (with multiplier)
-        _show_grade_obj_row($ans, $gradeobj['.mult']['ratio'], $gradeobj['.mult']['comments'], true, '× ');
-        $score *= $gradeobj['.mult']['ratio'];
-    }
-    _show_grade_obj_row($ans, $score, 'Overall achievement', true);
-    
-    $ans[] = '</tbody></table>';
-    return implode('', $ans);
-}
-function _show_grade_obj_row(&$ans, $ratio, $comment, $percent=False, $prefix='') {
-        $ans[] = '<tr><td class="';
-        $ans[] = $ratio === FALSE ? '' : (($ratio >= 1) ? 'full' : ($ratio > 0 ? 'partial' : 'no'));
-        $ans[] = ' credit">';
-        $ans[] = $prefix;
-        if ($ratio === FALSE) {
-        } else if ($percent) {
-            $ans[] = round($ratio*100, 1);
-            $ans[] = '%';
-        } else {
-            $ans[] = ($ratio >= 1) ? 'Yes!' : ($ratio > 0 ? 'Kind‑of' : 'No');
-        }
-        $ans[] = '</td><td>';
-        $ans[] = htmlspecialchars($comment);
-        $ans[] = '</td></tr>';
 }
 
 ?>

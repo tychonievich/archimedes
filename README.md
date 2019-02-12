@@ -23,7 +23,7 @@ ensure Apache has write-access to all three restricted folders and any subfolder
 
 -   `uploads/`
     -   slug`/`
-        -   `.gradelog` *append-only, one JSON object per line; keys timestamp,grader,user,slug,grade,comments; comments' value is an object with keys note, minor, major, etc and values as lists*
+        -   `.gradelog` *append-only, one JSON object per line; keys timestamp,grader,user,slug,kind,comments, and several kind-specific entries*
         -   `.rubric` *a JSON object defining the rubric for this assignment (optional)*
         -   userid`/`
             -   `.extension` *only present in unusual circumstances; a JSON object with fields "due" and "late"*
@@ -31,14 +31,15 @@ ensure Apache has write-access to all three restricted folders and any subfolder
             -   `.excused` *only present in unusual circumstances; it's contents are never read, only its presence*
             -   `.`20171231`-`235959`/` *upload time*
                 -   file.py
-            -   `.autofeedback` *inserted by autograder*
+                -   `.autograde` *inserted by autograder; key correctness needed for late penalty computation*
+            -   `.autograde` *inserted by autograder; keys correctness,feedback,missing,details*
             -   `.grade` *the most recent JSON line for this assignment from .gradelog*
             -   `.view` *the ID of the grader currently viewing this for grading, if any*
 -   `meta/`
     -   `assignments.json` *all the data the system knows about each assignment (required)*
     -   `roster.json` *all the data the system knows about each user (generated)*
     -   `coursegrade.json` *rules for combining grades into a course grade (optional)*
-    -   `buckets.json` *a JSON object defining the default set of buckets for assignments (optional)*
+    -   `course.json` *names and URL-bases to display*
     -   `.`20171231`-`235959`-roster.json` *backup data*
     -   `queued/`
         -   slug`-`userid *created to signal ifnotify watchers that this needs autograding; recursive inotify watch unwise because there are too many directories for some inotify limits*
@@ -152,7 +153,6 @@ Three required fields:
 
 -   `drops`: an object with keys as names of groups of assignments and values as a number of submissions of this group that are dropped. Missing entries default to 0.
 
-
 ### Per-section Assignments
 
 Optionally, assignment groups may also be restricted based on a `group` field in `users.json`, if any.
@@ -167,8 +167,20 @@ An assignment group is counted for a given user in the following cases:
 -   Otherwise, if the assignment group is in `exclude`, it is counted only if none of the user's `group`s is in `exclude`.
 -   Otherwise, it is counted.
 
+> Note: I have not re-tested exclude and include in several versions
 
-## Rubrics
+## `course.json`
+
+Three required fields:
+
+-   `title`: a string naming the course, displayed on the web pages
+
+-   `url`: an absolute URL of the course as a whole
+
+-   `writeup_prefix`: an absolute URL to which writeup names can be appended to yield valid links
+
+
+## Rubrics and `.grade`s
 
 Rubrics are specified in JSON objects.
 Two kinds of rubrics are currently available.
@@ -240,86 +252,23 @@ Grade specification
     ````
 
 
-### Breakdowns
+## `.autograde`
 
-The most common form of rubric, a breakdown splits the available points into one or more categories,
-each with its own rubric.
-Every breakdown also allows some additional multiplicative percentages, suitable for adding not-in-the-breakdown grade adjustments such as extra credit or penalties outside the primary purpose of the assignment.
+A single JSON object, containing
 
-```json
-{"kind":"breakdown"
-,"parts":[{"name":"correctness"
-          ,"ratio":0.6666666666666666
-          ,"rubric":{...}
-          }
-         ,{"name":"dialog"
-          ,"ratio":0.3333333333333333
-          ,"rubric":{...}
-          }
-         ]
-}
-```
+-   `correctness`, a number between 0 an 1
 
+-   `feedback`, a `pre`formatted string to show while the program is not yet due
 
+-   `missing`, a list of strings, one per missed test case, to show during the makeup stage
 
-### Binary
+-   `details`, a list of objects, one per test case, with at least two keys each:
+    
+    -   `correct`, a boolean
+    -   `weight`, a number
+    
+    We will (eventually) add display of incorrect details to graders, with all other keys displayed too
 
-TO DO: add this option
-
-```json
-{"kind":"binary"}
-```
-
-## `.autofeedback` and `.grade`
-
-A single JSON object, containing a set of top-level fields and optionally a nested grade detail.
-
-### Top-level fields:
-
-All of the following are optional:
-
--   `timestamp`, a date-time string indicating when this data was generated.
-
--   `stdout`, a string of `pre`formatted data to show to the student.
-
--   `stderr`, a string of `pre`formatted data to show to the grader.
-
--   `grader` and `student`, computing IDs.
-
--   `grade`, the ratio of possible points earned (between 0 and 1).
-
--   `.mult`, a list of *percentage* objects (currently used only for late penalties).
-
--   `details`, a *nested grade breakdown* representing the actual grade of the assignment.
-
--   `pregrade`, a *nested grade breakdown* representing a guess to be used to pre-fill a grader's view.
-
-### Nested grade breakdown
-
-Information that, combined with a `.rubric`, represents exactly how grading was performed.
-It is meaningless without an associated `.rubric`, and has a different structure for each `.rubric` `kind`.
-
-#### Percentage
-
-A JSON object containing two entries:
-
--   `ratio`, a number between 0 and 1 representing how correct the graded item is.
--   `comment`, a string describing why the ratio was assigned.
-
-#### Breakdown
-
-A JSON object containing optional entries `.mult` and `.earned` and any subset of the breakdown categories in the associated rubric.
-
--   `.mult`'s value is a list of *percentages* by which the entire breakdown score is multiplied.
-
--   `.earned`'s value is a ration (between 0 and 1) of the total points from this breakdown (present as a cache to simplify student views).
-
--   Each other entry's value is a nested grade breakdown.
-
-#### Buckets
-
-A JSON array, containing exactly the number of elements of the associated rubric.
-Each element is an array of strings, the comments of the associated bucket.
 
 ## `.gradelog`
 
@@ -394,189 +343,3 @@ However, it should be fairly straightforward to port to other systems:
 
     
     
-
-# Old notes that may still have some value
-
--   a **grade** consists one of the following:
-    -   a **percentage**, being a score and a comment
-    -   a *breakdown* and a set of *multiplier*s, where
-        -   a **breakdown** is a set of weighted *grades*
-        -   a **multiplier** is a *percentage*
-        -   `result = sum(weight*grade for (weight, grade) in breakdown) * product(multipliers)`
-    -   a *bucket chain* and *payload*, where
-        -   a **bucket chain** is an ordered list of *buckets*
-            -   each **bucket** is 
-                -   a *percentage* with a severity-identifying comment and a score worth less than the previous bucket
-                -   a **spillover count**; reaching or exceeding this number of payload items in the bucket causes a single entry in the next bucket
-        -   a **payload** is a set of comments allocated to buckets
-        -   result = score of last bucket with payload, linearly extrapolated to spillover limit
-
-The intended purpose of a multiplier is to capture out-of-band mistakes:
-late penalties are the classic example, but this might also be where you penalize someone for using cuss words for variable names, or bad indentation on a problem that does not have indentation in the breakdown, or plagiarism, etc.
-
-The default bucket chain is:
-
--   Notes, 100%, no spillover
--   Minor errors, 90%, spillover 3
-    -   problems that suggest inattention or imprecision of understanding or execution
--   Major errors, 70%, spillover 2
-    -   problems that suggest a localized misunderstanding 
--   Serious errors, 50% spillover 6
-    -   problems that suggest a significant misunderstanding
--   Score-zeroing errors, 0%
-    -   failure to submit, gibberish, etc
-
-In a `.grade`, store
-
--   percentage: `{"ratio":0.78, "comment":"a solid C+ performance"}`{.json}
--   breakdown: `{"function header":..., "computation":..., "style":..., ".mult":[{...}, {...}]}`{.json}
--   payload: `[["next time, use more descriptive variable names"],[],["should return, not print"],[],[]]`{.json}
-
-A `.grade` is incomplete without an associated `.rubric`.
-
-In a `.rubric`, store
-
-````json
-{"kind":"percentage"}
-````
-
-````json
-{"kind":"breakdown"
-,"parts":[{"name":"function header","ratio":0.3,"rubric":...}
-         ,{"name":"computation","ratio":0.5,"rubric":...}
-         ,{"name":"style","ratio":0.2,"rubric":...}
-         ]
-}
-````
-
-````json
-{"kind":"buckets"
-,"buckets":[{"name":"notes","score":1.0,"spillover":0}
-           ,{"name":"minor errors","score":0.9,"spillover":3}
-           ,{"name":"major errors","score":0.7,"spillover":2}
-           ,{"name":"serious errors","score":0.5,"spillover":-3}
-           ,{"name":"score-zeroing errors","score":0.0,"spillover":0}
-           ]
-}
-````
-
-A default buckets list for the entire course may be provided in `meta/buckets.json`.
-If so provided, the "buckets" entry is optional.
-
-For a given assignment, the following are checked to determine the rubric, stopping on the first successful check:
-
--   `uploads/`assignment`/.rubric`
--   `uploads/.rubric`
--   if `meta/buckets.json` exists, `{"kind":"buckets"}`{.json}
--   `{"kind":"percentage"}`{.json}
-
-To assist in consistent grading, a pool of comments are collected and shared with all graders.
-These are stored on a per-assignment basis with an associated path.
-Paths are stored as a newline-separated string of breakdown names, possibly terminated by a bucket index.
-For example,
-
-```json
-   {"":{"ratio":0.79,"comment":"per the syllabus, code that doesn't work earns at most a C+"}
-
-   {"functionality\n0":"good job!"}
-   {"functionality\n1":"fails for n=0"}
-```
-For example, a simple percentage might be `{"path":[],"comment":{"ratio":0.79,"comment":"per the syllabus, code that doesn't work earns at most a C+"}`{.json};
-a minor-error comment in the "style" part of "part 2" might be `{"path":["part 2","style",1],"comment":"supposed to use lower_case, not camelCase"}`{.json}.
-All of these are appended on lines of a file `/meta/commentpool/`assignment`.json`.
-
-To avoid comment pool proliferation but still allow detailed feedback, the grader interface separates comments into two parts: a required generic comment, which is pooled, and an optional detailed part, which is not.
-
-
-
-
-````
-grader view
-    
-
-
-Autofeedback
-Previous grade
-display view of files
-    highlight code
-    size-limit image
-download link for files
-download .zip for all files, support, and testers
-
-Task:
-    notes:
-        [ ] good job!
-        [ ] should pick better variable names
-        [_______________________] [add]
-    minor errors:
-    major errors:
-    serious errors:
-    score-zeroing errors:
-
-{"task":"...", "category":"...", "comment":"..."}
-
-tasks:
-    task1:
-        mode: breakdown
-        parts:
-            function header: 3
-            syntax: 2
-            functionality: 5
-    task2:
-        total: 10
-        mode: severity
-severities:
-    notes: 0
-    minor: 0.1
-        overflow:
-            add: 0.1
-            beyond: 1
-            max: 0.3
-    major: 0.3
-        minor: 3
-    serious: 0.5
-        major: 2
-        overflow:
-            add: 0.1
-            beyond: 2
-            max: 0.8
-    score-zeroing: 1.0
-````
-
-
-
-```
-To do: add this kind of rubric (and maybe remove the old ones?)
-
-{"kind":"hybrid"
-,"auto":4
-,"human":6
-,"auto_late_penalty":0.5
-,"auto_late_days":2
-,"human_check":[{"name":"good variable names","weight":2}
-			   ,"proper indentation"
-			   ,"docstrings present"
-			   ,{"name":"well-formatted docstrings (will be worth points in later assignments)", "weight":0}
-			   ,"effort at reasonable design"
-			   ,"complicated parts (if any) properly commented"
-			   ]
-}
-
-Store the human rubric in the .grade to protect against rubric changes?
-Or not to allow easy change of weights post-hoc?
-Perhaps a compromise: store, and add a "rubric change" UI
-
-{"details":{"auto":0.7931034482758621
-           ,"auto_late":0.9310344827586207
-           ,"human":[{"weight":2,"ratio":0.5,"name":"good variable names"}
-                    ,{"weight":1,"ratio":1,"name":"proper indentation"}
-                    ,{"weight":1,"ratio":1,"name":"docstrings present"}
-                    ,{"weight":0,"ratio":0.5,"name":"well-formatted docstrings (will be worth points in later assignments)"}
-                    ,{"weight":1,"ratio":0,"name":"effort at reasonable design"}
-                    ,{"weight":1,"ratio":1,"name":"complicated parts (if any) properly commented"}
-                    ]
-           }
-,"grade":0.7448275862068965
-}
-
-```
