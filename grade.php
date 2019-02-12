@@ -87,13 +87,8 @@ if (array_key_exists('addgrade', $_REQUEST)) {
 
 function percent_tag($id, $text, $percent, $comment) {
     return "<div class='percentage' id='$id'>
-<<<<<<< HEAD
-        <input type='text' id='$id|percent' value='$percent' />% $text
-        <div class='comment'>Comment: <input type='text' id='$id|comment' value='$comment' /></div>
-=======
         <input type='text' id='$id|percent' value='$percent' size='4'/>% $text
         <div class='comment'><span>Comment:</span><textarea id='$id|comment'>$comment</textarea></div>
->>>>>>> 4f939edd0d476471bc9665d870656e386f15ca3e
     </div>";
 }
 
@@ -106,15 +101,9 @@ function item_tag($id, $name, $select=False) {
         $sf = ''; $sp = ''; $sn = '';
     }
     return "<div class='item'>
-<<<<<<< HEAD
-        <label class='full'><input type='radio' name='$id' value='1.0' $sf/> 1</label>
-        <label class='partial'><input type='radio' name='$id' value='0.5' $sp/> ½</label>
-        <label class='none'><input type='radio' name='$id' value='0.0' $sn/> 0</label>
-=======
         <label class='full'><input type='radio' name='$id' value='1.0' $sf/>1</label>
         <label class='partial'><input type='radio' name='$id' value='0.5' $sp/>½</label>
         <label class='none'><input type='radio' name='$id' value='0.0' $sn/>0</label>
->>>>>>> 4f939edd0d476471bc9665d870656e386f15ca3e
         <span class='label'>$name</span>
     </div>";
 }
