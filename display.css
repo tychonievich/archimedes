@@ -68,7 +68,7 @@ table.vbar { border-collapse: separate; border-spacing:1ex 0ex; }
 .snapshot { max-width: 50%; display: table; margin: 1ex auto; box-shadow: 0ex 0ex 1ex 0ex rgba(0,0,0,0.25); text-align: center; color: rgba(0,0,0,0.5);}
 
 .panel { margin: 1ex; padding:1ex; border: thin solid; border-radius:2ex; background-color:white; max-width:100%; }
-pre.highlighted { border: thin solid #f0f0f0; white-space:pre-wrap; padding-right: 1ex; max-width:calc(100%-2ex); margin:0em; }
+pre.highlighted { border: thin solid #f0f0f0; padding-right: 1ex; max-width:calc(100%-2ex); margin:0em; }
 .highlighted .lineno { background:#f0f0f0; padding:0ex 1ex; color:#999999; font-weight:normal; font-style:normal; }
 .highlighted .comment { font-style: italic; color:#808080; }
 .highlighted .string { font-weight:bold; color: #008000; }
@@ -102,16 +102,15 @@ div.grade + div { white-space: pre-wrap; }
 /* input, select, option { font-size:100%; } */
 
 
-.check.correct, .full.credit { background-color:rgba(0,255,0,0.25); }
-.check.wrong, .no.credit { background-color:rgba(255,0,0,0.25); }
-.check.partial, .partial.credit { background-color:rgba(255,255,0,0.25); }
+.check.correct, .full.credit, label.full { background-color:rgba(0,255,0,0.25); }
+.check.wrong, .no.credit, label.none { background-color:rgba(255,0,0,0.25); }
+.check.partial, .partial.credit, label.partial { background-color:rgba(255,255,0,0.25); }
 table.feedback tr td:first-child { text-align: center; }
 table.feedback tr td { border: rgba(0,0,0,0) 0.5ex solid; }
 table.feedback tr.break td { border: thin solid black; padding:0; }
 
-div.item, div.comment { display: flex; margin-bottom:0.5ex; border-bottom: 0.125ex solid rgba(0,0,0,0.25);}
-div.item label { white-space:pre; color:rgba(0,0,0,0.5); }
-span.label { display: inline-block; border-left: 0.125ex solid rgba(0,0,0,0.25); padding-left:0.5ex; }
-label.full { background: rgba(0,255,0,0.125); }
-label.partial { background: rgba(255,255,0,0.125); }
-label.none { background: rgba(255,0,0,0.125); }
+div.item label { white-space: pre; }
+div.item { margin: 0.5ex 0ex; }
+
+div.comment, div.item { display: flex; }
+div.comment textarea, div.item span:last-child { flex: auto; margin-left: 1ex; }

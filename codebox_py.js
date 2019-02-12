@@ -37,13 +37,13 @@ function highlight() {
 function togglewrap() {
 	var s = document.querySelectorAll('.highlighted');
 	for(var i=0; i<s.length; i+=1) {
-		if (s[i].style.whiteSpace == 'pre') {
-			s[i].style.whiteSpace = 'pre-wrap';
-			s[i].style.overflowX = '';
-		}
-		else {
+		if (s[i].style.whiteSpace == 'pre-wrap') {
 			s[i].style.whiteSpace = 'pre';
 			s[i].style.overflowX = 'auto';
+		}
+		else {
+			s[i].style.whiteSpace = 'pre-wrap';
+			s[i].style.overflowX = '';
 		}
 	}
 }

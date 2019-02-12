@@ -87,8 +87,13 @@ if (array_key_exists('addgrade', $_REQUEST)) {
 
 function percent_tag($id, $text, $percent, $comment) {
     return "<div class='percentage' id='$id'>
+<<<<<<< HEAD
         <input type='text' id='$id|percent' value='$percent' />% $text
         <div class='comment'>Comment: <input type='text' id='$id|comment' value='$comment' /></div>
+=======
+        <input type='text' id='$id|percent' value='$percent' size='4'/>% $text
+        <div class='comment'><span>Comment:</span><textarea id='$id|comment'>$comment</textarea></div>
+>>>>>>> 4f939edd0d476471bc9665d870656e386f15ca3e
     </div>";
 }
 
@@ -101,9 +106,15 @@ function item_tag($id, $name, $select=False) {
         $sf = ''; $sp = ''; $sn = '';
     }
     return "<div class='item'>
+<<<<<<< HEAD
         <label class='full'><input type='radio' name='$id' value='1.0' $sf/> 1</label>
         <label class='partial'><input type='radio' name='$id' value='0.5' $sp/> ½</label>
         <label class='none'><input type='radio' name='$id' value='0.0' $sn/> 0</label>
+=======
+        <label class='full'><input type='radio' name='$id' value='1.0' $sf/>1</label>
+        <label class='partial'><input type='radio' name='$id' value='0.5' $sp/>½</label>
+        <label class='none'><input type='radio' name='$id' value='0.0' $sn/>0</label>
+>>>>>>> 4f939edd0d476471bc9665d870656e386f15ca3e
         <span class='label'>$name</span>
     </div>";
 }
@@ -112,7 +123,7 @@ function percent_tree($details) {
     $id = "$details[slug]|$details[student]";
     $text = 'correct';
     $ratio = array_key_exists('grade', $details) ? $details['grade']['ratio']*100 : '';
-    $comment = array_key_exists('grade', $details) ? htmlspecialchars($details['grade']['comment']) : '';
+    $comment = array_key_exists('grade', $details) ? htmlspecialchars($details['grade']['comments']) : '';
     return percent_tag($id, $text, $ratio, $comment);
 }
 
@@ -152,15 +163,16 @@ function hybrid_tree($details) {
         $hasmult ? $details['grade']['.mult']['ratio']*100 : '',
         $hasmult ? htmlspecialchars($details['grade']['.mult']['comments']) : ''
     );
-        
     
+    $comment = array_key_exists('grade', $details) ? htmlspecialchars($details['grade']['comments']) : '';
+		
     return "<div class='hybrid' id='$id'>
         <div class='ontime' id='$id|ontime'>$ontime</div>
         <div class='late' id='$id|late'>$late</div>
         <div class='items' id='$id|items'>
             $items
         </div>
-        <div class='comment'>Comment: <input type='text' id='$id|comment' value='$comment' /></div>
+        <div class='comment'><span>Comment:</span><textarea id='$id|comment'>$comment</textarea></div>
         <div class='hide-outer hidden'><strong class='hide-header'>Multiplier (for special cases)</strong><div class='hide-inner'>
         $mult
         </div></div>
@@ -236,7 +248,7 @@ function student_screen($slug, $student, $nof='') {
         "<input type='button' value='submit grade' onclick='grade(",
         json_encode("$slug|$student"),
         ")'/><input type='button' value='skip' onclick='skip(",
-        json_encode("$slug\n$student"),
+        json_encode("$slug|$student"),
         ")'/></td></tr></tbody></table>",
     ));
 }
@@ -485,8 +497,7 @@ function grade(id) {
 
 /** hides the current student's work and moves on to the next one */
 function skip(id, skipped=true) {
-    document.getElementById("table\n"+id).classList.add('done');
-    commentPoll(id.split('\n')[0]);
+    document.getElementById("table|"+id).classList.add('done');
     if (skipped) {
         var foot = document.getElementById('grading-footer');
         foot.firstElementChild.classList.remove('success');
@@ -623,78 +634,6 @@ function toGrade($slug, $grader, $redo) {
     if (array_key_exists('limit', $_REQUEST)) $ans = array_slice($ans, 0, intval($_REQUEST['limit']));
     return $ans;
 }
-function showGradingView($slug, $student, $rubric, $comments, $nof='') {
-    $name = fullRoster()[$student]['name'];
-    echo "<table class='table-columns' id='table\n$slug\n$student'><tbody><tr><td>";
-    $files = false;
-    $norepeat = array();
-    foreach(glob("uploads/$slug/$student/*") as $path) {
-        echo studentFileTag($path);
-        $norepeat[] = basename($path);
-        $files = true;
-    }
-    $a = assignments()[$slug];
-    if (array_key_exists('extends', $a)) {
-        foreach($a['extends'] as $slug2) {
-            foreach(glob("uploads/$slug2/$student/*") as $path) {
-                if (in_array(basename($path), $norepeat)) continue;
-                echo "<div style='clear:both; padding-top:2em;'>Submitted under $slug2:</div>";
-                echo studentFileTag($path);
-                $norepeat[] = basename($path);
-                $files = true;
-            }
-        }
-    }
-
-    
-    if (!$files) { echo studentFileTag(false); }
-    echo '</td><td>';
-    echo "You may <a href='download.php?file=$slug/$student'>download a .zip of submitted and tester files</a> for this student.";
-    echo "<div class='student name'>";
-    echo "$name ($student)";
-    if (file_exists("uploads/$slug/$student/.partners")) {
-        foreach(explode("\n", file_get_contents("uploads/$slug/$student/.partners")) as $other) {
-            if ($other != $student) {
-                echo " and " . (fullRoster()[$other]['name']) . " ($other)";
-            }
-        }
-    }
-    echo $nof;
-    echo "</div>";
-    
-    if ($slug == "Checkpoint 1") { // HACK
-        echo "<p><strong>Grading guidelines:</strong> Give 1 if they <em>either</em> describe their game idea <em>or</em> provide partial game code. Give at least 0.5 if they submitted something more than a blank file. Also give comments and feedback.</p>";
-    }
-    if ($slug == "Checkpoint 2") { // HACK
-        echo "<p><strong>Grading guidelines:</strong> Give 1 if they submitted <q>a the basics of a working game, in <code>game.py</code>, possibly with a few <q>it crashes if you do <em>X</em>X</q>-type bugs or missing features.</q> Take off at most 0.1 for wrong file name. Give at least 0.5 if they some gamebox s.</p>";
-    }
-    
-    $grade = array();
-    if (file_exists("uploads/$slug/$student/.autofeedback")) {
-        $feedback = display_grade_file("uploads/$slug/$student/.autofeedback");
-        if (array_key_exists('pregrade', $feedback)) $grade['details'] = $feedback['pregrade'];
-    }
-    if (file_exists("uploads/$slug/$student/.grade"))
-        $grade = json_decode(file_get_contents("uploads/$slug/$student/.grade"), true);
-
-    if (array_key_exists('grader', $grade)) echo "<div class='grader name'>".fullRoster()[$grade['grader']]['name']." ($grade[grader]) <small>".prettyTime(filemtime("uploads/$slug/$student/.grade"))."</small></div>";
-    
-    // process regrades
-    echo regradeTag($grade, true);
-    
-    echo rubricTree($rubric, $comments, 
-        array_key_exists('details', $grade) ? $grade['details'] : array(),
-        "$slug\n$student");
-    
-    // add an additional set of fields if this is a regrade
-    
-    echo "<input type='button' value='submit grade' onclick='grade(".json_encode("$slug\n$student").")'/>";
-    echo "<input type='button' value='skip' onclick='skip(".json_encode("$slug\n$student").")'/>";
-    
-    echo '</td></tr></tbody></table>';
-
-}
-
 
 /**
  * Returns an array of students with assignments still needing to be graded.
@@ -725,135 +664,6 @@ function gradeQueue($assignment, $grader, $redo=false) {
     return $ans;
 }
 
-function rubricTree($rubric, $comments, $grade, $prefix, $path="", $name="") {
-    global $js_total;
-    if ($rubric['kind'] == 'breakdown') {
-        echo "<dl class='breakdown' id='$prefix$path'>";
-        foreach($rubric['parts'] as $part) {
-            echo "<dt><strong>$part[name]</strong> ($part[ratio])</dt><dd>";
-            rubricTree(
-                $part['rubric'], 
-                $comments,
-                array_key_exists($part['name'], $grade) ? $grade[$part['name']] : array(),
-                $prefix,
-                "$path\n$part[name]",
-                $name ? "$name/$part[name]" : "$part[name]"
-            );
-            echo "</dd>";
-        }
-        echo "<dt style='display:none;'><em>grade multipliers</em></dt><dd style='display:none;'>";
-        rubricTree(
-            array('kind'=>'percentage','set'=>True),  // FIX ME: not right; a set of, not just one
-            $comments,
-            array_key_exists('.mult', $grade) ? $grade['.mult'] : array(),
-            $prefix,
-            "$path\n.mult",
-            $name ? "$name/.mult" : ".mult"
-        );
-        echo "</dd>";
-        echo '</dl>';
-    } else if ($rubric['kind'] == 'percentage') {
-        // if in grade but not in comments, might not show up (untested, but I don't think it will)
-        if (array_key_exists('set',$rubric) && $rubric['set']) {
-            echo "<div class='percentage set' id='$prefix$path' name='$name'>";
-            $radio = 'checkbox';
-            $check = array();
-            $pref = "&times;";
-            foreach($grade as $comobj) {
-                $key = ''; $ex = '';
-                commentSplit($comobj['comment'], $key, $ex);
-                $check[round($comobj['ratio'],8)." ".$key] = $ex;
-            }
-        } else {
-            echo "<div class='percentage' id='$prefix$path' name='$name'>";
-            $radio = 'radio';
-            $check = array();
-            $pref = "score ";
-            if (array_key_exists('comment', $grade)) {
-                $key = ''; $ex = '';
-                commentSplit($grade['comment'], $key, $ex);
-                $check[round($grade['ratio'],8)." ".$key] = $ex;
-                $asgn = assignments()[split("\n",$prefix,2)[0]];
-                $show = $grade['ratio'];
-                if (array_key_exists('total', $asgn)) $show *= $asgn['total'];
-                echo "<div>Current score: $show</div>";
-            }
-        }
-//      echo "$pref <input type='text' id='ratio\n$prefix$path' size='3' value='1'/>: <input type='text' id='new\n$prefix$path'/> <input type='button' value='add comment' onclick='addcomment(".json_encode("new\n$prefix$path").")'/>";
-        echo "$pref <input type='text' id='ratio\n$prefix$path' size='3' value='1'/>: <textarea id='new\n$prefix$path'></textarea> <input type='button' value='add comment' onclick='addcomment(".json_encode("new\n$prefix$path").")'/>";
-        $path_fix = $path ? $path : "\n"; // <-- not elegant, but works with current comment pool format
-        $cset = array();
-        if (array_key_exists($path_fix, $comments)) { $cset = array_merge($cset, $comments[$path_fix]); }
-        if (array_key_exists('set',$rubric) && $rubric['set']) {
-            $cset = array_merge($cset, $grade);
-        } else if (array_key_exists('comment', $grade)) {
-            $cset[] = $grade;
-        }
-        foreach($cset as $obj) {
-            echo "<br/>";
-            echo "<label><input type='$radio' name='$prefix$path' value='";
-            echo htmlspecialchars(json_encode($obj), ENT_QUOTES|ENT_HTML5);
-            $key = round($obj['ratio'],8)." ".$obj['comment'];
-            $more = False;
-            if (array_key_exists($key, $check)) { echo "' checked='checked"; $more = $check[$key]; }
-            echo "'/> $pref".($obj['ratio']*$js_total).": ";
-            echo htmlspecialchars($obj['comment'], ENT_QUOTES|ENT_HTML5);
-            echo "</label> (<textarea rows='1'>";
-            if ($more !== False) echo htmlspecialchars($more, ENT_QUOTES|ENT_HTML5);
-            echo "</textarea>)";
-        }
-        echo '</div>';
-    } else if ($rubric['kind'] == 'check') {
-        echo "<div class='check' id='$prefix$path' name='$name'>";
-        echo "<label><input type='radio' name='$prefix$path' value='1'";
-        if ($grade >= 1) echo " checked='checked'"; 
-        echo "> full</label> or ";
-        echo "<label><input type='radio' name='$prefix$path' value='0.5'";
-        if ($grade > 0 && $grade < 1) echo " checked='checked'"; 
-        echo "> partial</label> or ";
-        echo "<label><input type='radio' name='$prefix$path' value='0'";
-        if ($grade <= 0) echo " checked='checked'"; 
-        echo "> no</label> credit.";
-        echo '</div>';
-    } else if ($rubric['kind'] == 'buckets') {
-        echo "<dl class='buckets' id='$prefix$path'>";
-        foreach($rubric['buckets'] as $i=>$bucket) {
-            $coms = array();
-            if (array_key_exists("$path\n$i", $comments)) $coms = array_merge($comments["$path\n$i"], $coms);
-            // extract the two parts of each comment, general and specific
-            if (array_key_exists($i, $grade)) {
-                $general = array();
-                $specific = array();
-                foreach($grade[$i] as $j=>$txt) {
-                    commentSplit($txt, $general[$j], $specific[$j]);
-                }
-                $coms = array_unique(array_merge($general, $coms), SORT_REGULAR);
-            }
-            natcasesort($coms);
-            // the following trusts that all general comments in $grade are in $comments
-            echo "<dt>$bucket[name] ($bucket[score])</dt><dd class='bucket' name='$name/$i' id='$prefix$path\n$i'>";
-            foreach($coms as $j=>$txt) {
-                $idx = array_key_exists($i, $grade) ? array_search($txt, $general) : False;
-                echo "<p><label><input type='checkbox' name='$prefix$path\n$i' value='";
-                echo htmlspecialchars($txt, ENT_QUOTES|ENT_HTML5);
-                if ($idx !== False) echo "' checked='checked";
-                echo "'/> ";
-                echo htmlspecialchars($txt, ENT_QUOTES|ENT_HTML5);
-                echo "</label> (<textarea rows='1'>";
-                if ($idx !== False) echo htmlspecialchars($specific[$idx], ENT_QUOTES|ENT_HTML5);
-                echo "</textarea>)";
-                echo "</p>";
-            }
-            echo "<input type='text' id='new\n$prefix$path\n$i'/><input type='button' value='add comment' onclick='addcomment(".json_encode("new\n$prefix$path\n$i").")'/>";
-            echo "</dd>";
-        }
-        echo '</dl>';
-    } else {
-        echo '<p class="error">Error! Unexpected rubric kind ';
-        var_dump($rubric['kind']);
-        echo '</p>';
-    }
-}
 
 
 /*
@@ -925,11 +735,9 @@ if (array_key_exists('assignment', $_REQUEST)) {
             echo "</ul>";
         } else if ($grader) {
             // show this user's grading interface
-            $rubric = rubricOf($slug);
-            $comments = commentSet($slug);
             $alltodo = toGrade($slug, $grader, $redo);
             foreach($alltodo as $i=>$student) {
-                showGradingView($slug, $student, $rubric, $comments, " ".($i+1)." of ".count($alltodo));
+                echo student_screen($slug, $student, " ".($i+1)." of ".count($alltodo));
             }
             ?>
             <div id="grading-footer">
@@ -982,7 +790,6 @@ if (array_key_exists('assignment', $_REQUEST)) {
     // show list of assignments (might be slow?)
     $options = gradeableTree();
     echo '<h2>Pick an assignment:</h2>';
-    if ($issuperuser) echo "<p>We have a prototype <a href='merge.php'>comment merge site</a> you are in the initial pilot group to use (with caution... its changes are currently irreversible)</p>";
     echo '<ul class="linklist">';
     foreach($options as $slug=>$stats) {
         if (strlen($slug) == 0 || $slug[0] == '.') continue; // just in case

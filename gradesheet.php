@@ -19,6 +19,12 @@
 		dt.collapsed:before { content: "+ "; }
 		dt.collapsed:after { content: " …"; }
 		dt.collapsed { font-style: italic; }
+
+		.xp-bar { width: 100%; padding: 0em; white-space: pre; border: thin solid black; line-height:0%;}
+		.xp-bar span { height: 1em; padding:0em; margin: 0em; border: none; display:inline-block; }
+		.xp-earned { background: rgba(0,191,0,1); fill:rgba(0,191,0,1); }
+		.xp-missed { background: rgba(255,127,0,0.5); fill:rgba(255,127,0,0.5); }
+		.xp-future { background: rgba(0,0,0,0.125); fill:rgba(0,0,0,0.125); }
 	</style>
 	<script>//<!--
 function load() {
@@ -56,23 +62,40 @@ if (!hasFacultyRole($me)) { die("<p>Only faculty may view this page</p></body></
 
 
 ?>
+<p>See also the <a href="gradesheet_csv.php">CSV version of the raw scores</a>.</p>
 <table class="alternate"><thead><tr>
         <th onclick="sortcolumn('tbody',0,true)">ID ⇕</th>
         <th onclick="sortcolumn('tbody',1,true)">Name ⇕</th>
         <th onclick="sortcolumn('tbody',2,true)">Section ⇕</th>
         <th onclick="sortcolumn('tbody',3,true)">Grade ⇕</th>
+        <th>Progress</th>
 </tr></thead>
 <tbody id="tbody">
-	<p>See also the <a href="gradesheet_csv.php">CSV version of the raw scores</a>.</p><?php
+	<?php
 
 foreach(fullRoster() as $id=>$details) {
 	if (hasStaffRole($details)) continue;
 	$section = strpos($details['groups'], "-00");
 	if ($section > 0) { $section = substr($details['groups'], $section-4, 8); }
 	else { $section = ''; } 
-	echo "<tr><td><a href='index.php?asuser=$id'>$id</a></td><td>$details[name]</td><td>$section</td><td>";
-	echo grade_in_course($id);
-	echo "</td></tr>";
+
+	$overall = cumulative_status($id);
+	$ep = 0; $fp = 0; $mp = 0;
+	foreach($overall as $grp=>$scores) {
+		$ep += $scores['weight'] * $scores['earned'];
+		$fp += $scores['weight'] * $scores['future'];
+		$mp += $scores['weight'] * $scores['missed'];
+	}
+	$overall = $ep + $mp > 0 ? 100*$ep / ($ep + $mp) : '';
+	$bar = 	svg_progress_bar($ep, $fp, $mp);
+
+
+	echo '<tr>';
+	echo "<td><a href='index.php?asuser=$id'>$id</a></td>"; // ID
+	echo "<td>$details[name]</td>"; // Name
+	echo "<td>$section</td>"; // Groups
+	echo "<td>$overall</td><td>$bar</td>";
+	echo '</tr>';
 }
 
 ?></tbody>
