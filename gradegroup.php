@@ -29,28 +29,28 @@ if (array_key_exists('student', $_REQUEST)) {
     <title>Grading group creation</title>
     <script>//<!--
 function ajax(payload, qstring, empty=null, response=null) {
-	var xhr = new XMLHttpRequest();
-	if (!("withCredentials" in xhr)) {
-		alert('Your browser does not support TLS in XMLHttpRequests; please use a browser based on Gecko or Webkit'); return null;
-	}
-	xhr.open("POST", "<?=$_SERVER['SCRIPT_NAME']?>?"+qstring, true);
-	xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-	
-	xhr.withCredentials = true;
-	xhr.onerror = function() {
-		alert("Grading failed (network trouble or browser incompatibility)");
-	}
-	xhr.onload = function() {
-		if (xhr.responseText.length == 0) {
-			if (empty) empty();
-			else console.warn("<?=$_SERVER['SCRIPT_NAME']?>?"+qstring + ' returned nothing');
-		} else {
-			if (response) response(xhr.responseText);
-			else console.info("<?=$_SERVER['SCRIPT_NAME']?>?"+qstring + ' returned ' + JSON.stringify(xhr.responseText));
-		}
-	}
+    var xhr = new XMLHttpRequest();
+    if (!("withCredentials" in xhr)) {
+        alert('Your browser does not support TLS in XMLHttpRequests; please use a browser based on Gecko or Webkit'); return null;
+    }
+    xhr.open("POST", "<?=$_SERVER['SCRIPT_NAME']?>?"+qstring, true);
+    xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
     
-	xhr.send(Object.entries(payload).map(e => e.map(ee => encodeURIComponent(ee)).join('=')).join('&'));
+    xhr.withCredentials = true;
+    xhr.onerror = function() {
+        alert("Grading failed (network trouble or browser incompatibility)");
+    }
+    xhr.onload = function() {
+        if (xhr.responseText.length == 0) {
+            if (empty) empty();
+            else console.warn("<?=$_SERVER['SCRIPT_NAME']?>?"+qstring + ' returned nothing');
+        } else {
+            if (response) response(xhr.responseText);
+            else console.info("<?=$_SERVER['SCRIPT_NAME']?>?"+qstring + ' returned ' + JSON.stringify(xhr.responseText));
+        }
+    }
+    
+    xhr.send(Object.entries(payload).map(e => e.map(ee => encodeURIComponent(ee)).join('=')).join('&'));
 }
 
 function idwrap(s) {

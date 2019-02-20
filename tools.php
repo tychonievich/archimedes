@@ -65,12 +65,12 @@ function rosterEntry($id, $check=false) {
 $_assignments = False;
 /// Helper function to read the set of assignments (needed in almost every view)
 function assignments() {
-    global $_assignments;
+    global $_assignments, $metadata;
     if ($_assignments === False) {
         $_assignments = json_decode(file_get_contents("meta/assignments.json"), true);
         foreach($_assignments as $k=>$v) {
             if (!array_key_exists('fbdelay', $v)) {
-                $_assignments[$k]['fbdelay'] = 2;
+                $_assignments[$k]['fbdelay'] = array_key_exists('fbdelay', $metadata) ? $metadata['fbdelay'] : 2;
             }
         }
     }
@@ -296,7 +296,7 @@ function updateRosterSpreadsheet($uploadrecord, $remove=False, $keepWaiters=True
         $removed = count($killed);
         if ($removed > 0) {
             foreach($killed as $i=>$val) {
-                unlink("users/$val.json");
+                unlink("users/$i.json");
             }
             $killed = ": " . implode(', ', array_keys($killed));
         }
@@ -714,7 +714,7 @@ function studentFileTag($path, $classes='left') {
             return "<a href='$link' target='_blank'><img class='$classes width height' src='$link'/></a><br/><input type='button' value='toggle image visibility' onclick='e=this.previousSibling.previousSibling; e.setAttribute(\"style\", e.getAttribute(\"style\") ? \"\" : \"display:none\")'/>";
             //  return "<a href='$link' target='_blank'><img class='$classes width height' src='$link'/></a>";
         } else if (stripos($mime, 'text') !== FALSE) {
-            return "<div class='$classes width'>File <a href='$link' target='_blank'><tt>$title</tt></a>:<pre><code>" . htmlspecialchars(file_get_contents($path)) . "</code></pre></div>";
+            return "<div class='$classes width'>File <a href='$link' target='_blank'><tt>$title</tt></a>: <input type='button' style='font-family:monospace' value='toggle visibility' onclick='e=this.nextSibling; e.setAttribute(\"style\", e.getAttribute(\"style\") ? \"\" : \"display:none\")'/><pre><code>" . htmlspecialchars(file_get_contents($path)) . "</code></pre></div>";
         } else if (is_dir($path)) {
             $vlink = 'view.php?file='.rawurlencode(explode('/',$path,2)[1]);
             return "<div class='$classes width'>Directory <a href='$vlink'><tt>$title</tt></a></div>";
@@ -756,10 +756,10 @@ function svg_progress_bar($ep, $fp, $mp) {
     $ep *= 100/$tot; $fp *= 100/$tot; $mp *= 100/$tot;
     $tmp = $ep+$fp;
     return "<svg width='100%' height='1em' viewBox='0 0 100 10' preserveAspectRatio='none'>
-	<rect x='0' y='0' width='$ep' height='20' class='xp-earned'/>
-	<rect x='$ep' y='0' width='$fp' height='20' class='xp-future'/>
-	<rect x='$tmp' y='0' width='$mp' height='20' class='xp-missed'/>
-	</svg>";
+    <rect x='0' y='0' width='$ep' height='20' class='xp-earned'/>
+    <rect x='$ep' y='0' width='$fp' height='20' class='xp-future'/>
+    <rect x='$tmp' y='0' width='$mp' height='20' class='xp-missed'/>
+    </svg>";
 }
 
 

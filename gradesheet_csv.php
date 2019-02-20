@@ -6,8 +6,8 @@ logInAs();
 if (!hasFacultyRole($me)) { die("Only faculty may view this page"); }
 
 function csv_row_for($user) {
-	if ($user == null) {
-		$row = array(
+    if ($user == null) {
+        $row = array(
             'student',
             'letter',
             'score',
@@ -19,10 +19,10 @@ function csv_row_for($user) {
                 $row[] = "$n [$d[weight]]";
             }
         }
-		return $row;
-	}
-	$sheet = grade_map($user);
-	$row = array(
+        return $row;
+    }
+    $sheet = grade_map($user);
+    $row = array(
         $user,
         $sheet['letter'],
         $sheet['grade'],
@@ -44,8 +44,8 @@ $fh = fopen("php://output", "w");
 fputcsv($fh, csv_row_for(null));
 
 foreach(fullRoster() as $id=>$details) {
-	if (hasStaffRole($details)) continue;
-	fputcsv($fh, csv_row_for($id));
+    if (hasStaffRole($details)) continue;
+    fputcsv($fh, csv_row_for($id));
 }
 
 fclose($fh);

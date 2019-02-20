@@ -11,53 +11,53 @@ var token_types = [null, 'comment', 'string', 'number', 'keyword'];
  * A function I have no idea why isn't built into ECMAScript: an HTML escaper
  */
 function htmlspecialchars(s) {
-	return s.replace(/\&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;')
+    return s.replace(/\&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;')
 }
 
 /**
  * used the regular expressions to add style tags to all contents of <pre><code>
  */
 function highlight() {
-	var highlight = document.querySelectorAll('pre code');
-	for(var i=0; i<highlight.length; i+=1) {
-		var code = highlight[i];
-		if (code.parentElement.classList.contains('highlighted')) continue;
-		var src = code.innerText.replace(/\t/g, '    ');
-		var bits = src.split(tokenizer);
-		var newcode = '';
-		for(var j=0; j<bits.length; j+=token_types.length) {
-			newcode += htmlspecialchars(bits[j]);
-			if (j+1 == bits.length) break;
-			for(var k=1; k<token_types.length; k+=1)
-				if (bits[j+k]) newcode += '<span class="'+token_types[k]+'">'+htmlspecialchars(bits[j+k])+'</span>';
-		}
-		var lines = newcode.split('\n');
-		var wid = String(lines.length).length;
-		src = '';
-		for(var j=0; j<lines.length; j+=1) {
-			src += '<span class="lineno">'+String(j+1).padStart(wid)+'</span>' + lines[j] + '\n';
-		}
-		code.innerHTML = src + '<input type="button" value="line numbers" onclick="togglelineno()"/><input type="button" value="wrap" onclick="togglewrap()"/>';
-		code.parentElement.classList.add('highlighted');
-	}
+    var highlight = document.querySelectorAll('pre code');
+    for(var i=0; i<highlight.length; i+=1) {
+        var code = highlight[i];
+        if (code.parentElement.classList.contains('highlighted')) continue;
+        var src = code.innerText.replace(/\t/g, '    ');
+        var bits = src.split(tokenizer);
+        var newcode = '';
+        for(var j=0; j<bits.length; j+=token_types.length) {
+            newcode += htmlspecialchars(bits[j]);
+            if (j+1 == bits.length) break;
+            for(var k=1; k<token_types.length; k+=1)
+                if (bits[j+k]) newcode += '<span class="'+token_types[k]+'">'+htmlspecialchars(bits[j+k])+'</span>';
+        }
+        var lines = newcode.split('\n');
+        var wid = String(lines.length).length;
+        src = '';
+        for(var j=0; j<lines.length; j+=1) {
+            src += '<span class="lineno">'+String(j+1).padStart(wid)+'</span>' + lines[j] + '\n';
+        }
+        code.innerHTML = src + '<input type="button" value="line numbers" onclick="togglelineno()"/><input type="button" value="wrap" onclick="togglewrap()"/>';
+        code.parentElement.classList.add('highlighted');
+    }
 }
 function togglewrap() {
-	var s = document.querySelectorAll('.highlighted');
-	for(var i=0; i<s.length; i+=1) {
-		if (s[i].style.whiteSpace == 'pre') {
-			s[i].style.whiteSpace = 'pre-wrap';
-			s[i].style.overflowX = '';
-		}
-		else {
-			s[i].style.whiteSpace = 'pre';
-			s[i].style.overflowX = 'auto';
-		}
-	}
+    var s = document.querySelectorAll('.highlighted');
+    for(var i=0; i<s.length; i+=1) {
+        if (s[i].style.whiteSpace == 'pre') {
+            s[i].style.whiteSpace = 'pre-wrap';
+            s[i].style.overflowX = '';
+        }
+        else {
+            s[i].style.whiteSpace = 'pre';
+            s[i].style.overflowX = 'auto';
+        }
+    }
 }
 function togglelineno() {
-	var s = document.querySelectorAll('.lineno');
-	for(var i=0; i<s.length; i+=1) {
-		if (s[i].style.display == 'none') s[i].style.display = '';
-		else s[i].style.display = 'none';
-	}
+    var s = document.querySelectorAll('.lineno');
+    for(var i=0; i<s.length; i+=1) {
+        if (s[i].style.display == 'none') s[i].style.display = '';
+        else s[i].style.display = 'none';
+    }
 }

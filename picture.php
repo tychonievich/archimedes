@@ -8,12 +8,15 @@ $path = trim($_REQUEST['user'], "./\\\t\n\r\0\x0B");
 if (!$path) die('Failed to provide a user ID');
 if ($path != $user && !$isstaff) die('You are not allowed to view that user');
 
+if (basename($path)[0] == '.' || $path != basename($path)) die('Invalid user name');
+
+$altpath = "../ohq/photos/$path.jpg";
 $path = "users/$path.jpg";
 
-if (realpath($path) != getcwd()."/$path") die('Invalid user name');
-if (basename($path)[0] == '.') die('Invalid user name');
-
-if (!file_exists($path)) die('No photo found');
+if (!file_exists($path)) {
+    if (file_exists($altpath)) $path = $altpath;
+    else die('No photo found');
+}
 
 $finfo = new finfo(FILEINFO_MIME);
 $mime = $finfo->file($path);

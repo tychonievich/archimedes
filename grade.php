@@ -38,7 +38,7 @@ if (array_key_exists('addgrade', $_REQUEST)) {
             'msg'=>$grade['regrade'],
         );
         unset($grade['regrade']);
-        file_put($chatfile, json_encode($chatter));
+        file_put($chatfile, json_encode($chatter)) || die('failed to record decision (may be server permission error?)');
     }
     
     $rub = rubricOf($grade['slug']);
@@ -69,7 +69,7 @@ if (array_key_exists('addgrade', $_REQUEST)) {
     
     // post to uploads/assignment/.gradelog and uploads/assignment/student/.grade
     $payload = json_encode($grade);
-    file_put("uploads/$grade[slug]/$grade[student]/.grade", $payload);
+    file_put("uploads/$grade[slug]/$grade[student]/.grade", $payload)  || die('failed to record grade (may be server permission error?)');
     if (file_exists("uploads/$grade[slug]/$grade[student]/.partners")) {
         foreach(explode("\n",file_get_contents("uploads/$grade[slug]/$grade[student]/.partners")) as $pair) {
             file_put("uploads/$grade[slug]/$pair/.grade", $payload);
@@ -154,7 +154,7 @@ function hybrid_tree($details) {
     );
     
     $comment = array_key_exists('grade', $details) ? htmlspecialchars($details['grade']['comments']) : '';
-		
+        
     return "<div class='hybrid' id='$id'>
         <div class='ontime' id='$id|ontime'>$ontime</div>
         <div class='late' id='$id|late'>$late</div>
@@ -178,7 +178,7 @@ function grading_tree($details) {
 
 function student_screen($slug, $student, $nof='') {
     $details = asgn_details($student, $slug);
-	
+    
     //echo '<pre>';
     //var_dump($details);
     //echo '</pre>';
@@ -191,13 +191,12 @@ function student_screen($slug, $student, $nof='') {
         $subs[] = studentFileTag($path);
     
     // identifier
-    $names = array(fullRoster()[$student]['name'], " ($student)");
-	if (file_exists("uploads/$slug/$student/.partners"))
-		foreach(explode("\n", file_get_contents("uploads/$slug/$student/.partners")) as $other)
-			if ($other != $student) {
-				$names[] = fullRoster()[$other]['name'];
-                $names[] = " ($other)";
-			}
+    $names = array(fullRoster()[$student]['name'] . " ($student)");
+    if (file_exists("uploads/$slug/$student/.partners"))
+        foreach(explode("\n", file_get_contents("uploads/$slug/$student/.partners")) as $other)
+            if ($other != $student) {
+                $names[] = fullRoster()[$other]['name'] . " ($other)";
+            }
 
     // regrade conversation
     if (array_key_exists('.chat', $details) || array_key_exists('.regrade-req', $details)) {
@@ -216,7 +215,7 @@ function student_screen($slug, $student, $nof='') {
             $rg[] = "<pre class='request'>";
             $rg[] = htmlspecialchars($details['.regrade-req']);
             $rg[] = "</pre>";
-			$rg[] = "<strong>Response:</strong><textarea class='regrade-response' id='$slug|$student|regrade'></textarea>";
+            $rg[] = "<strong>Response:</strong><textarea class='regrade-response' id='$slug|$student|regrade'></textarea>";
         }
         $rg[] = "</div>";
         if ($keep) $rg = implode('', $rg);
@@ -225,12 +224,30 @@ function student_screen($slug, $student, $nof='') {
     
     // grading tree -- single function below
     
+    // secret info
+    if (file_exists("uploads/$slug/$student/.secretfeedback")) {
+        $secret = json_decode(file_get_contents("uploads/$slug/$student/.secretfeedback"),true);
+        $secret = htmlspecialchars($secret['stdout']);
+    } else if (array_key_exists('autograde',$details) && array_key_exists('details', $details['autograde'])) {
+        // FIXME: show all test cases in detail
+        $secret = 'viewing details of test cases not yet enabled';
+    } else {
+        $secret = '';
+    }
+    if (strlen($secret) > 0)
+        $secret = "<textarea class='display' disabled='disabled'>$secret</textarea>";
+    if (array_key_exists('autograde',$details) && array_key_exists('feedback', $details['autograde'])) {
+        $fb = $details['autograde']['feedback'];
+        $secret = "$secret<textarea class='display' disabled='disabled'>$fb</textarea>";
+        
+    }
+    
     // assemble
     return implode('', array(
         "<table class='table-columns' id='table|$slug|$student'><tbody><tr><td>",
         implode('', $subs),
-        "</td><td>You may <a href='download.php?file=$slug/$student'>download a .zip of submitted and tester files</a> for this student.",
-        "<div class='student_name'>",
+        "</td><td><div class='coltop'>You may <a href='download.php?file=$slug/$student'>download a .zip of submitted and tester files</a> for this student.",
+        "<div class='student name'>",
         implode(' and ', $names),
         " $nof</div>$rg",
         grading_tree($details),
@@ -238,7 +255,7 @@ function student_screen($slug, $student, $nof='') {
         json_encode("$slug|$student"),
         ")'/><input type='button' value='skip' onclick='skip(",
         json_encode("$slug|$student"),
-        ")'/></td></tr></tbody></table>",
+        ")'/></div><hr/>$secret</td></tr></tbody></table>",
     ));
 }
 
@@ -250,51 +267,8 @@ header('Content-Type: text/html; charset=utf-8');
     <title>Archimedes Grading Server</title>
     <link rel="stylesheet" href="display.css" type="text/css"></link>
     <style>
-body { font-family: sans-serif; }
-.assignment, .action { border-radius:1ex; padding:1ex; margin:1ex 0ex; }
-.assignment.pending { background:rgba(0,0,0,0.0625); opacity:0.5; }
-.assignment.open { background:rgba(0,255,127,0.0625); }
-.assignment.late { background:rgba(255,127,0,0.0625); }
-.assignment.closed { background:rgba(0,0,0,0.0625); }
-.action { background:rgba(191,0,255,0.0625); border: thin solid rgba(191,0,255,0.25)}
-div.prewrap pre { background: rgba(63,31,0,1); color: white; padding:1ex; margin:0em; float:left; }
-div.prewrap { max-width:50em; overflow:auto; padding:0em; margin:0em; background: rgba(63,31,0,1); }
-
-h1 { margin:0.25ex 0ex; text-align:center; }
-p { margin:0.5ex 0ex; }
-
-.assignment tt, .big tt { border: thin solid white; padding: 1px; background: rgba(255,255,255,0.25); }
-
-.hide-outer { margin:0ex 0.5ex; border:thin solid rgba(0,0,0,0.5); padding:0.5ex; border-radius:0.5ex; }
-.hidden strong { font-weight: normal; display:block; width:100%; }
-.hidden > strong:before { content: "+ "; }
-.shown > strong:before { content: "− "; }
-.hidden .hide-inner { display:none; }
-.hide-outer textarea { width:100%; }
-.hide-outer.important { border-width:thick; background:rgba(255,255,0,0.5); }
-
-.big { font-size: 150%; margin:1ex; padding:1ex; border: thick solid; border-radius:1ex; }
-.big h1 { font-size: 125%; text-align:left; margin:0em;}
-.big.notice { border-color:rgba(0,0,0,0.25); background-color:rgba(0,0,0,0.0625); font-size:125%; }
-.big.success { border-color:rgba(0,255,127,0.5); background-color:rgba(0,255,127,0.125); }
-.big.error { border-color:rgba(255,63,0,0.5); background-color:rgba(255,63,0,0.125); }
-
-pre.rawtext, pre.feedback, pre.regrade-request, pre.regrade-response { white-space:pre-wrap; padding:0.5ex; }
-.stdout { background: white; } .stderr, pre.regrade-request { background: #ddd; }
-pre.regrade-request { font-family: sans-serif; margin:0.5ex; }
-
-dl, dt, ul, li { margin-top:0em; margin-bottom:0em; }
-dl.comments dt { font-weight:bold; margin-left:1em; }
-dl.comments dd { margin:0em; }
-dl.comments ul { margin:0em; }
-
-.linklist li { margin:1ex 0ex; }
-
-.advice { font-style: italic; opacity:0.5;}
-dl.buckets > dt { font-weight: bold; }
-dl.buckets > dd > p { text-indent:-2em; margin:0em; margin-left: 2em; }
-    </style>
-    <style>
+        .linklist li { margin:1ex 0ex; }
+        
         body { margin:0em; padding:0em; border:1ex solid rgba(255,255,255,0); }
         
         .panel.left { float:left; margin: 0ex; clear:left; }
@@ -318,11 +292,6 @@ dd { margin-left:1em; }
 
 .ungraded { border: 0.25ex solid rgba(255,127,0,0.25); padding:0.25ex; background-color: rgba(255,127,0,0.0625); border-radius:0.5ex; }
 
-dd.collapsed { display:none; }
-dt.collapsed:before { content: "+ "; }
-dt.collapsed:after { content: " …"; }
-dt.collapsed { font-style: italic; }
-
 input, textarea { padding:0ex; margin:0ex; font-size:100%; font-family:inherit; }
 pre { margin:0em; }
     
@@ -342,16 +311,9 @@ input + input { margin-left:0.5ex; }
 
         table.table-columns.done, table.table-columns:not(.done) + table.table-columns, table.table-columns:not(.done) + #grading-footer { display:none; }
 
-
-        pre.highlighted { border: thin solid #f0f0f0; white-space:pre-wrap; padding-right: 1ex; max-width:calc(100%-2ex); margin:0em; }
-        .highlighted .lineno { background:#f0f0f0; padding:0ex 1ex; color:#999999; font-weight:normal; font-style:normal; }
-        .highlighted .comment { font-style: italic; color:#808080; }
-        .highlighted .string { font-weight:bold; color: #008000; }
-        .highlighted .number { color: #0000ff; }
-        .highlighted .keyword { font-weight: bold; color: #000080; }
     </style>
-	<script src="dates_collapse.js"></script>
-    <script type="text/javascript" src="codebox_py.js"></script>
+    <script src="dates_collapse.js"></script>
+    <script type="text/javascript" src="codebox_c.js"></script>
     <script>
 /**
  * This function is supposed to change all self-sizing panels based on a page resize
