@@ -15,6 +15,7 @@ $metadata = json_decode(file_get_contents('meta/course.json'), true);
         .highlighted .string { font-weight:bold; color: #008000; }
         .highlighted .number { color: #0000ff; }
         .highlighted .keyword { font-weight: bold; color: #000080; }
+        .highlighted .special { font-style: normal; color:#008080; }
     </style>
     <script src="dates_collapse.js"></script>
     <script type="text/javascript" src="codebox_<?=array_key_exists("code-lang",$metadata)?$metadata["code-lang"]:"py"?>.js"></script>

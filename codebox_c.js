@@ -1,11 +1,12 @@
 
+var re_cpp = /(^[ \t]*#[^\n]*(?:\\\n[^\n]*)*)/;
 var re_comment = /(\/\/[^\n]*|\/\*[\s\S]*?\*\/)/;
 var re_string = /((?:\b[lL])?"(?:[^"\\\n]|\\[\s\S])*"|(?:[lL])?'(?:[^\\']|\\[0-7]{1,3}|\\x[0-9a-zA-F]{1,2}|\\u[0-9a-fA-F]{4}|\\U[0-9a-fA-F]{8}|\\.)')/;
 var re_number = /\b((?:[0-9]*\.[0-9]+(?:[eE][-+][0-9]+)?|[0-9]+\.(?:[eE][-+][0-9]+)?|[0-9]+[eE][-+][0-9]+|0[0-7]+|0[Xx][0-9a-fA-F]+|0|[1-9][0-9]*)[jJ]?)\b/;
 var re_keyword = /\b(auto|break|case|char|const|continue|default|do|double|else|enum|extern|float|for|goto|if|int|long|register|return|short|signed|sizeof|static|struct|switch|typedef|union|unsigned|void|volatile|while)\b/;
 
-var tokenizer = new RegExp([re_comment.source, re_string.source, re_number.source, re_keyword.source].join('|'), 'g');
-var token_types = [null, 'comment', 'string', 'number', 'keyword'];
+var tokenizer = new RegExp([re_cpp.source, re_comment.source, re_string.source, re_number.source, re_keyword.source].join('|'), 'gm');
+var token_types = [null, 'special', 'comment', 'string', 'number', 'keyword'];
 
 /**
  * A function I have no idea why isn't built into ECMAScript: an HTML escaper
