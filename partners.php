@@ -154,8 +154,8 @@ foreach(fullRoster() as $id=>$details) {
             $parts = array();
         $everyone[$id] = array(
             "name" => $details["name"],
-            "grader" => $details["grader"],
-            "grader_name" => $details["grader_name"],
+            "grader" => array_key_exists("grader", $details) ? $details["grader"] : 'no TA',
+            "grader_name" => array_key_exists("grader_name", $details) ? $details["grader_name"] : 'no TA assigned',
             "section" => hasStaffRole($details) ? 'staff' : labOf($details['groups']),
             "partners" => $parts
         );

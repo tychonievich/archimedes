@@ -337,13 +337,6 @@ function imageresize() {
 window.onresize = imageresize;
 
 
-<?php
-$js_asgn = assignments()[$_GET['assignment']];
-if (array_key_exists('total', $js_asgn)) { $js_total = $js_asgn['total']; }
-else { $js_total = 1; }
-?>
-
-
 /** Adds hooks to all definition lists so that clicking their terms toggles the visibility of their definitions */
 function setUpCollapses() {
     var breakdowns = document.querySelectorAll('dt');
