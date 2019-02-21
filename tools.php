@@ -802,8 +802,8 @@ function asgn_details($student, $slug) {
     }
 
     // add post-hoc adjustments (to support legacy team project adjustment interface); probably worth refactoring as its current implementation is inconsistent withregrade interfaces, etc.
-    if (file_exists("uploads/$slug/$user/.adjustment")) { // HACK: should probably refactor...
-        $adj = json_decode(file_get_contents("uploads/$slug/$user/.adjustment"), true);
+    if (file_exists("uploads/$slug/$student/.adjustment")) { // HACK: should probably refactor...
+        $adj = json_decode(file_get_contents("uploads/$slug/$student/.adjustment"), true);
         $details['.adjustment'] = $adj;
         // fields: mult, comments
     }
