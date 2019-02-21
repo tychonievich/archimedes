@@ -24,11 +24,31 @@ This file is based on earlier code by the same author: https://github.com/tychon
 
 import os.path, sys
 
+import json, os, sys, os.path, glob, shutil, runpy, io, datetime, tempfile
+import pyinotify as pin
 
-root = os.path.dirname(os.path.dirname(sys.argv[0]))
+
+root = os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0])))
 tasks = os.path.join(root, 'meta/tasks') # {slug}.yaml
 queue = os.path.join(root, 'meta/queued') # {slug}-{user} with contents .{date}
 uploads = os.path.join(root, 'uploads/{slug}/{user}/{date}')
+
+
+def justme():
+	os.chdir(os.path.dirname(os.path.realpath(__file__)))
+	slug = '/tmp/'+os.path.realpath(__file__).replace('/','.') + '.pid'
+	try:
+		with open(slug) as f:
+			pid = f.read()
+		with open('/proc/'+pid+'/cmdline') as f:
+			cmd = f.read()
+		assert 'autotester' in cmd
+		print('already running; exiting', file=sys.stderr)
+		os._exit(1)
+	except:
+		with open(slug, 'w') as f:
+			f.write(str(os.getpid()))
+
 
 testers = {}
 
@@ -39,6 +59,9 @@ def newtask(path):
     Does not (currently) re-run tests when a tester is updated."""
     global testers
     import testmaker, yaml
+    if not path.endswith('.yaml'):
+        print('ignoring', path)
+        return
     print('newtask',(path,))
     with open(path) as f: p = yaml.safe_load(f)
     t = testmaker.loadyaml(p)
@@ -74,7 +97,7 @@ def ppath(path):
 def newcode(path):
     """Handle testing a queue entry"""
     global testers
-    import json
+    import json, testmaker
     print('newcode', (path,))
 
     subdir, pyfile, dst, afb, lfb, slug = ppath(path)
@@ -100,7 +123,7 @@ def newcode(path):
     
     result = testers[slug].report(pyfile)
     try:
-        with open(afb, 'w') as f: json.dump({'stdout':result['feedback']}, f)
+        with open(afb, 'w') as f: json.dump({'stdout':result['feedback']}, f, default=lambda x:str(type(x)))
     except:
         with open(afb, 'w') as f: json.dump({'stdout':"internal error generating automated feedback"}, f)
 
@@ -115,7 +138,7 @@ def newcode(path):
         with open(afb, 'w') as f: json.dump({'stdout':"internal error testing your code"}, f)
         
     try:
-        with open(dst, 'w') as f: json.dump(result, f, indent=2)
+        with open(dst, 'w') as f: json.dump(result, f, indent=2, default=lambda x:str(type(x)))
     except BaseException as ex:
         with open(dst, 'w') as f: json.dump({'correct':0,'error':testmaker.ex_msg(ex)}, f, indent=2)
     
@@ -123,7 +146,7 @@ def newcode(path):
     if os.path.exists(dst) and not os.path.exists(dst2):
         os.link(dst, dst2)
     
-    os.unlink(path) # remove queue now that grade finished
+    if os.path.exists(path): os.unlink(path) # remove queue now that grade finished
     return
     
     
@@ -191,7 +214,9 @@ if __name__ == "__main__":
 
     import pyinotify as pin # to notice when new files are ready for testing
     import sys
-
+    import testmaker # for exception display
+    justme()
+	
     wm = pin.WatchManager()
     mask = pin.IN_CLOSE_WRITE | pin.IN_MOVED_TO | pin.IN_CREATE
     wm.add_watch(queue, mask, rec=False)

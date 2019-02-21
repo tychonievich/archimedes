@@ -1,13 +1,13 @@
 html { background:grey; }
 body { font-family: sans-serif; 
-	display:table; margin:auto; 
-	border-radius:1em; border:thick solid grey; padding:1ex; 
-	background: white; 
-	}
+    display:table; margin:auto; 
+    border-radius:1em; border:thick solid grey; padding:1ex; 
+    background: white; 
+    }
 .assignment, .action { border-radius:1ex; padding:1ex; margin:1ex 0ex; }
 .assignment.pending { background:rgba(0,0,0,0.0625); opacity:0.5; }
 .assignment.open { background:rgba(0,255,127,0.0625); }
-.assignment.late { background:rgba(255,127,0,0.0625); }
+.assignment.late, form.late { background:rgba(255,127,0,0.0625); }
 .assignment.closed { background:rgba(0,0,0,0.0625); }
 .action { background:rgba(191,0,255,0.0625); border: thin solid rgba(191,0,255,0.25)}
 div.prewrap pre { background: rgba(63,31,0,1); color: white; padding:1ex; margin:0em; float:left; }
@@ -48,7 +48,7 @@ li, dt, dd { margin: 0em; }
 ul { padding-left: 1em; }
 dl, ul, div.percentage, div.extra { margin:0em 0em 0em 1em; }
 div.percentage, dl.buckets, dl.breakdown, div.extra { 
-	border-left: thin solid rgba(0,0,0,0.25); padding-left:1ex; 
+    border-left: thin solid rgba(0,0,0,0.25); padding-left:1ex; 
 }
 
 .advice { font-style: italic; opacity:0.5;}
@@ -68,7 +68,7 @@ table.vbar { border-collapse: separate; border-spacing:1ex 0ex; }
 .snapshot { max-width: 50%; display: table; margin: 1ex auto; box-shadow: 0ex 0ex 1ex 0ex rgba(0,0,0,0.25); text-align: center; color: rgba(0,0,0,0.5);}
 
 .panel { margin: 1ex; padding:1ex; border: thin solid; border-radius:2ex; background-color:white; max-width:100%; }
-pre.highlighted { border: thin solid #f0f0f0; padding-right: 1ex; max-width:calc(100%-2ex); margin:0em; }
+pre.highlighted { border: thin solid #f0f0f0; padding-right: 1ex; max-width:calc(100%-2ex); margin:0em; overflow-x:auto; }
 .highlighted .lineno { background:#f0f0f0; padding:0ex 1ex; color:#999999; font-weight:normal; font-style:normal; }
 .highlighted .comment { font-style: italic; color:#808080; }
 .highlighted .string { font-weight:bold; color: #008000; }
@@ -114,3 +114,7 @@ div.item { margin: 0.5ex 0ex; }
 
 div.comment, div.item { display: flex; }
 div.comment textarea, div.item span:last-child { flex: auto; margin-left: 1ex; }
+div.conversation pre { white-space: pre-wrap; }
+
+table.table-columns tbody tr td:last-child { display: flex; flex-direction:column; height:90vh; }
+table.table-columns tbody tr td:last-child textarea.display { flex-grow:1; font-family:monospace; }

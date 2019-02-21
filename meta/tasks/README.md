@@ -136,6 +136,10 @@ Many different specification formats are supported.
 Each test case specifies some subset of
 
 -   `args`, a list of values to be passed to the `func`tion as positional arguments
+    
+    if an element of `args` is a string both beginning and ending with a backtick,
+    the contents between the backticks will be `eval`ed by the testmaker
+    
 -   `kwargs`, a dict of named values to be passed to the `func`tion as keyword aguments
 -   `inputs`, a list of things to simulate the user typing in response to each `input(...)` command
 -   `retval`, the value returned by the `func`tion

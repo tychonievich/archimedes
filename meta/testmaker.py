@@ -261,6 +261,8 @@ class Tester:
                 ans['predicate'] = self.compile(asfunc(ans['predicate'], 'def predicate(retval, outputs, args, kwargs)'))
             if 'name' not in ans: ans['name'] = case_str(ans, self.func or 'f')
             if 'weight' not in ans: ans['weight'] = 1
+            if 'test_code' in ans:
+                ans['test_code'] = self.compile(ans['test_code'], loose_rules=True)
             self.cases.append(ans)
         for args in obj.get('args', ()):
             ans = {'args':tuple(args)}
@@ -279,6 +281,12 @@ class Tester:
                 ans['rule'] = self.compile(asfunc(constraint['rule'], 'def rule(retval, outputs)'))
                 if 'message' in constraint: ans['message'] = constraint['message']
             self.constraints.append(ans)
+        for case in self.cases:
+            if 'args' in case:
+                for i in range(len(case['args'])):
+                    s = case['args'][i]
+                    if type(s) is str and s.startswith('`') and s.endswith('`'):
+                        case['args'][i] = eval(s[1:-1], globals())
         self.mustchange = obj.get('mustchange', False)
         self.maychange = self.mustchange or obj.get('maychange', False)
         
@@ -330,8 +338,23 @@ class Tester:
                     results.append(report)
                     continue
                 
-                
                 try:
+                    if 'test_code' in case:
+                        co,tree,gl,io = user
+                        exec(co, gl)
+                        if '_correct' in gl: del gl['_correct']
+                        if '_message' in gl: del gl['_message']
+                        co,tree,gl2,io = case['test_code']
+                        gl.update(gl2)
+                        exec(co, gl)
+                        
+                        if gl.get('_correct'):
+                            report['correct'] = True
+                        else:
+                            report['error'] = gl.get('_message', case.get('message', 'wrong result'))
+                        results.append(report)
+                        continue
+                    
                     _uca, _uck = copy.deepcopy(case.get('args',())), copy.deepcopy(case.get('kwargs',{}))
                     _gca, _gck = copy.deepcopy(case.get('args',())), copy.deepcopy(case.get('kwargs',{}))
                     uo, go = [], []
