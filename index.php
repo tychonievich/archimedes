@@ -228,7 +228,7 @@ leavePre();
 
 // display extra information, if applicable
 if (array_key_exists('groups', $me) && !($isstaff && $isself)) echo "<p>We list you as part of: $me[groups]</p>\n";
-if (array_key_exists('grader_name', $me)) echo "<p>Your code coach is $me[grader_name].</p>\n";
+if (array_key_exists('grader_name', $me)) echo "<p>Your $metadata[grader] is $me[grader_name].</p>\n";
 
 
 
@@ -270,7 +270,7 @@ if ($isstaff) {
     <input type='submit' value="Change Identity"/>
     </form></div>
     <div class="action">
-    Visit the <a href="codecoach.php">code team site</a>,
+    Visit the <a href="codecoach.php"><?=$metadata['grading group']?> site</a>,
     the <a href="partners.php">project partner site</a>,
     or the <a href="grade.php">the grading site</a>.
     </div>

@@ -18,7 +18,9 @@ if (array_key_exists('student', $_REQUEST)) {
     $lab = $_REQUEST['lab'];
     $graders = array();
     foreach(fullRoster() as $id=>$details) {
-        if (strpos($details['groups'], $lab) !== FALSE && !hasStaffRole($details)) {
+        if (((array_key_exists('groups', $details) && strpos($details['groups'], $lab) !== FALSE)
+        || $lab == ' ')
+         && !hasStaffRole($details)) {
             $graders[$id] = array('grader'=>$details['grader'],'name'=>$details['name']);
         }
     }
@@ -26,7 +28,7 @@ if (array_key_exists('student', $_REQUEST)) {
 }
 ?>﻿<!DOCTYPE html>
 <html lang="en"><head>
-    <title>Code team creation</title>
+    <title><?=$metadata['Grading group']?> creation</title>
     <script>//<!--
 function ajax(payload, qstring, empty=null, response=null) {
 	var xhr = new XMLHttpRequest();
@@ -78,7 +80,7 @@ function updatelab() {
                 bucket.id = (k == 'null' ? 'no TA' : k);
                 bucket.ondrop = drop_handler;
                 bucket.ondragover = dragover_handler;
-                bucket.appendChild(document.createTextNode('Code coach '+(k == 'null' ? 'no TA' : k)+': '+window.groups[k].length));
+                bucket.appendChild(document.createTextNode('<?=$metadata["Grader"]?> '+(k == 'null' ? 'no TA' : k)+': '+window.groups[k].length));
                 l.appendChild(bucket);
             }
             for(var i=0; i<window.groups[k].length; i+=1) {
@@ -102,7 +104,7 @@ function updatelab() {
     
         var all = document.querySelectorAll('.group');
         for(var i=0; i<all.length; i+=1) {
-            all[i].replaceChild(document.createTextNode('Code coach ' + all[i].id + ': ' + all[i].children.length), all[i].childNodes[0]);
+            all[i].replaceChild(document.createTextNode('<?=$metadata["Grader"]?> ' + all[i].id + ': ' + all[i].children.length), all[i].childNodes[0]);
             var nodes = []; nodes.push.apply(nodes, all[i].querySelectorAll('.student'));
             nodes.sort(function(a,b) { return a.id < b.id ? -1 : +(a.id > b.id); });
             nodes.forEach(function(n){n.parentNode.appendChild(n);});
@@ -129,7 +131,7 @@ function picklab(lab) {
             bucket.id = (k == 'null' ? 'no TA' : k);
             bucket.ondrop = drop_handler;
             bucket.ondragover = dragover_handler;
-            bucket.appendChild(document.createTextNode('Code coach '+(k == 'null' ? 'no TA' : k)+': '+window.groups[k].length));
+            bucket.appendChild(document.createTextNode('<?=$metadata["Grader"]?> '+(k == 'null' ? 'no TA' : k)+': '+window.groups[k].length));
             for(var i=0; i<window.groups[k].length; i+=1) {
                 var p = document.createElement('div');
                 p.id = idwrap(window.groups[k][i]);
@@ -161,7 +163,7 @@ function newgroup() {
     bucket.id = grader;
     bucket.ondrop = drop_handler;
     bucket.ondragover = dragover_handler;
-    bucket.appendChild(document.createTextNode('Code coach '+grader+': 0'));
+    bucket.appendChild(document.createTextNode('<?=$metadata["Grader"]?> '+grader+': 0'));
     document.getElementById('lab').appendChild(bucket);
 }
 
@@ -184,7 +186,7 @@ function drop_handler(ev) {
     });
     var all = document.querySelectorAll('.group');
     for(var i=0; i<all.length; i+=1) {
-        all[i].replaceChild(document.createTextNode('Code coach ' + all[i].id + ': ' + all[i].children.length), all[i].childNodes[0]);
+        all[i].replaceChild(document.createTextNode('<?=$metadata["Grader"]?> ' + all[i].id + ': ' + all[i].children.length), all[i].childNodes[0]);
         var nodes = []; nodes.push.apply(nodes, all[i].querySelectorAll('.student'));
         nodes.sort(function(a,b) { return a.id < b.id ? -1 : +(a.id > b.id); });
         nodes.forEach(function(n){n.parentNode.appendChild(n);});
@@ -208,7 +210,7 @@ function drop_handler(ev) {
 if (!isset($metadata))
     $metadata = json_decode(file_get_contents('meta/course.json'), true);
 
-if (isset($metadata) && array_key_exists('sections', $metadata)) {
+if (array_key_exists('sections', $metadata)) {
     foreach($metadata['sections'] as $section) {
         echo "<option>$section</option>\n";
     }
@@ -217,7 +219,7 @@ if (isset($metadata) && array_key_exists('sections', $metadata)) {
 }
 ?>
     </select></p>
-    <p>Add a code team for <?=staffDropdown('addgroup')?> <input type="button" value="create team" onclick="newgroup()"></p>
+    <p>Add a <?=$metadata['grading group']?> for <?=staffDropdown('addgroup')?> <input type="button" value="create <?=$metadata['grading group']?>" onclick="newgroup()"></p>
     <div><input type="button" value="Show pictures" onclick="if (this.value == 'Show pictures') { this.value = 'Hide pictures'; document.querySelectorAll('img').forEach(function(x){x.classList.remove('hide');}); } else {this.value = 'Show pictures'; document.querySelectorAll('img').forEach(function(x){x.classList.add('hide');}); }"/></div>
     <div id="lab"></div>
     <?php ?>

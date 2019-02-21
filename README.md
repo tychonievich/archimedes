@@ -193,6 +193,11 @@ You may optionally also include
     
     The current codebox files are quite simplistic, and may eventually be replaced with more sophisticated highlighting. If so, the nature of this configuration option may change.
 
+-   `grader`, the display name for the TA assigned to a given student (if used).
+
+-   `grading group`, the display name for the group of students assigned to a given TA (if used).
+
+
 ## Rubrics and `.grade`s
 
 Rubrics are specified in JSON objects.

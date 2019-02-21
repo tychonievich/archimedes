@@ -7,16 +7,19 @@ if (!defined('PHP_VERSION_ID') || PHP_VERSION_ID < 50400) {
     ini_set("magic_quotes_runtime", false);
 }
 
-if (!isset($metadata))
-    $metadata = json_decode(file_get_contents('meta/course.json'), true);
-
+//if (!isset($metadata))
+$metadata = json_decode(file_get_contents('meta/course.json'), true);
+if (!array_key_exists('grader', $metadata)) $metadata['grader'] = 'grader';
+if (!array_key_exists('grading group', $metadata)) $metadata['grading group'] = 'grading group';
+if (!array_key_exists('Grader', $metadata)) $metadata['Grader'] = ucfirst($metadata['grader']);
+if (!array_key_exists('Grading group', $metadata)) $metadata['Grading group'] = ucfirst($metadata['grading group']);
 
 
 /// The following array grants certain users access to the class even if you upload an empty roster or otherwise mess up the course setup. Feel free to add yourself to the set, but remove those it has now at your own risk.
 $superusers = array(
     'lat7h'=>array('name'=>'Luther Tychonievich', 'role'=>'Admin'),
     'no TA'=>array('name'=>'no TA assigned', 'role'=>'Teaching Assistant'),
-    'mst3k'=>array('name'=>'Mystery Theater', 'role'=>'Student'),
+    'mst3k'=>array('name'=>'Mystery Theater', 'role'=>'Student', 'grader'=>'no TA'),
 );
 
 $inPre = False;

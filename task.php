@@ -237,9 +237,9 @@ function show_grade($gradeobj) {
             $score = $score + ($lat-$score)*$pen;
         }
         $ans[] = '<tr class="break"><td colspan="2"></td></tr>';
-    }
+    } else { $score = 0; }
 
-    // code coach feedback
+    // staff feedback
     $human = 0;
     $human_denom = 0;
     foreach($gradeobj['human'] as $entry) {
@@ -293,7 +293,8 @@ function _show_grade_obj_row(&$ans, $ratio, $comment, $percent=False, $prefix=''
 
 
 function grader_fb($details) {
-    echo '<div class="hide-outer"><strong class="hide-header">code coach feedback</strong><div class="hide-inner">';
+    global $metadata;
+    echo "<div class='hide-outer'><strong class='hide-header'><?=$metadata[grader]?> feedback</strong><div class='hide-inner'>";
     echo show_grade($details['grade']);
     echo '</div></div>';
 }
