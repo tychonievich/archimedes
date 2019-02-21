@@ -503,12 +503,13 @@ function ajax(payload, qstring, empty=null, response=null) {
 <?php
 
 function gradeableTree($limit=False) {
+    global $issuperuser;
     $ans = array();
     $everyone = fullRoster();
     foreach(assignments() as $slug => $details) {
         if ($limit && $slug != $limit) continue;
         $ct = closeTime($details);
-        if ($ct == True && $ct < time() || $_SERVER['PHP_AUTH_USER'] == 'lat7h') {
+        if ($ct == True && $ct < time() || $issuperuser) {
             foreach(glob("uploads/$slug/*") as $dir) {
                 if (file_exists("$dir/.extension") 
                 && closeTime(json_decode(file_get_contents("$dir/.extension"),true)) > time()) {
