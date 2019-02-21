@@ -124,7 +124,11 @@ The following keys, if present, also have defined meaning:
 
 -   `support`, a list of file names (stored in `meta/support/`) that are needed to run the tests of this assignment.
 
+    Use of `support` is **deprecated**; it is still present only for ease of supplying TA's with runnable download bundles for files that cannot be graded by an autograder.
+
 -   `tester`, a single testing file to run to generate `.autofeedback`; if you need multi-file tests, identify one driver file as `tester` which uses other files, listed as `support`.
+
+    Use of `tester` is **deprecated**; the `meta/tasks/`slug`.yaml` files should be used instead (see `meta/tasks/README.md` for more).
 
 -   `extends`, a list of other assignment keys whose submissions should be assumed to also have been submitted for this assignment. Order matters: the first listed assignment in extends with a given file has its' copy used.
 
@@ -179,6 +183,11 @@ Three required fields:
 
 -   `writeup_prefix`: an absolute URL to which writeup names can be appended to yield valid links
 
+You may optionally also include
+
+-   `fbdelay`, the default delay (in hours) between automated feedback being generated and being shown to the student. Defaults to 2 if not other supplied. If also supplied on a per-assignment level, the assignment spcific value is used in lieu of the global default.
+
+-   `sections`, the list of sections to show on the code team page. Defaults to a single section with all students.
 
 ## Rubrics and `.grade`s
 
