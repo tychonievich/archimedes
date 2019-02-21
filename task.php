@@ -294,7 +294,7 @@ function _show_grade_obj_row(&$ans, $ratio, $comment, $percent=False, $prefix=''
 
 function grader_fb($details) {
     global $metadata;
-    echo "<div class='hide-outer'><strong class='hide-header'><?=$metadata[grader]?> feedback</strong><div class='hide-inner'>";
+    echo "<div class='hide-outer'><strong class='hide-header'>$metadata[grader] feedback</strong><div class='hide-inner'>";
     echo show_grade($details['grade']);
     echo '</div></div>';
 }
