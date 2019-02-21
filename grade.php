@@ -151,7 +151,7 @@ function hybrid_tree($details) {
         $hasmult ? htmlspecialchars($details['grade']['.mult']['comments']) : ''
     );
     
-    $comment = array_key_exists('grade', $details) ? htmlspecialchars($details['grade']['comments']) : '';
+    $comment = (array_key_exists('grade', $details) && array_key_exists('comments', $details['grade'])) ? htmlspecialchars($details['grade']['comments']) : '';
     
     // FIXME: there is currently no way to handle .adjustment files from this interface
     

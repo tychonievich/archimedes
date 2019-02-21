@@ -75,7 +75,7 @@ if (!hasFacultyRole($me)) { die("<p>Only faculty may view this page</p></body></
 
 foreach(fullRoster() as $id=>$details) {
     if (hasStaffRole($details)) continue;
-    $section = strpos($details['groups'], "-00");
+    $section = array_key_exists('groups', $details) ? strpos($details['groups'], "-00") : '';
     if ($section > 0) { $section = substr($details['groups'], $section-4, 8); }
     else { $section = ''; } 
 
