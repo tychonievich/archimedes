@@ -143,8 +143,6 @@ function hybrid_tree($details) {
     }
     $items = implode("\n            ", $items);
     
-    // to do: add comments!
-    
     $hasmult = array_key_exists('grade', $details) && array_key_exists('.mult',$details['grade']);
     $mult = percent_tag(
         "$id|mult", 
@@ -154,7 +152,9 @@ function hybrid_tree($details) {
     );
     
     $comment = array_key_exists('grade', $details) ? htmlspecialchars($details['grade']['comments']) : '';
-        
+    
+    // FIXME: there is currently no way to handle .adjustment files from this interface
+    
     return "<div class='hybrid' id='$id'>
         <div class='ontime' id='$id|ontime'>$ontime</div>
         <div class='late' id='$id|late'>$late</div>

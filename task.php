@@ -263,6 +263,11 @@ function show_grade($gradeobj) {
         _show_grade_obj_row($ans, $gradeobj['.mult']['ratio'], $gradeobj['.mult']['comments'], true, '× ');
         $score *= $gradeobj['.mult']['ratio'];
     }
+    if (array_key_exists('.adjustment', $gradeobj)) {
+        // (with multiplier)
+        _show_grade_obj_row($ans, $gradeobj['.adjustment']['mult'], $gradeobj['.adjustment']['comments'], true, '× ');
+        $score *= $gradeobj['.adjustment']['mult'];
+    }
     _show_grade_obj_row($ans, $score, 'Overall achievement', true);
     
     $ans[] = '</tbody></table>';

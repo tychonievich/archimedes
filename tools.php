@@ -452,101 +452,6 @@ function prettyTime($timestamp) {
     return "<span class='datetime' ts='$timestamp'>$base ($extra)</span>";
 }
 
-/** Recursively create an HTML tag for displaying grade feedback. */
-function feedbackTag($details, $rubric, $worth) {
-    try {
-        if (array_key_exists('details', $details)) {
-            $ans = feedbackTag($details['details'], $rubric, $worth);
-        } else if ($rubric['kind'] == 'breakdown') {
-            $total = 0; foreach($rubric['parts'] as $r) $total += $r['ratio'];
-            $ans = '<dl class="breakdown">';
-            $_ignore = False;
-            foreach($rubric['parts'] as $r) {
-                $ans .= "<dt class='breakdown-header'>".htmlspecialchars($r['name'])." (";
-                if ($worth) {
-                    $ans .= round(gradePool($details[$r['name']], $r['rubric'], $_ignore)*$worth*$r['ratio']/$total, 3);
-                    $ans .= " / ";
-                    $ans .= round($worth*$r['ratio']/$total, 3);
-                } else {
-                    $ans .= round(gradePool($details[$r['name']], $r['rubric'], $_ignore)*100*$r['ratio']/$total, 3);
-                    $ans .= " / ";
-                    $ans .= round(100*$r['ratio']/$total, 3) . "%";
-                }
-                $ans .= ")</dt><dd class='breakdown-body'>";
-                $ans .= feedbackTag($details[$r['name']], $r['rubric'], $worth*$r['ratio']/$total);
-                $ans .= "</dd>";
-            }
-            $ans .= '</dl>';
-        } else if ($rubric['kind'] == 'percentage') {
-            $ans = "<div class='percentage'>".($worth 
-            ? round($details['ratio']*$worth,3)." / ". round($worth,3)
-            : round($details['ratio']*100,2)."%"
-            ).": ".htmlspecialchars($details['comment'])."</div>";
-        } else if ($rubric['kind'] == 'check') {
-            if ($details >= 1) $ans = '<div class="check correct">full credit</div>';
-            else if ($details <= 0) $ans = '<div class="check wrong">no credit</div>';
-            else $ans = '<div class="check partial">partial credit</div>';
-        } else if ($rubric['kind'] == 'buckets') {
-            $rows = False;
-            $score = gradePool($details, $rubric, $rows);
-            $ans = "<dl class='buckets'>";
-            foreach($details as $i=>$set) {
-                if (count($set) > 0) {
-                    $ans .= "<dt class='bucket'>".htmlspecialchars($rubric['buckets'][$i]['name'])."</dt><dd><ul class='bucket'>";
-                    foreach($set as $txt) $ans .= "<li>".htmlspecialchars($txt)."</li>";
-                    $ans .= "</ul></dd>";
-                }
-            }
-            $ans .= "</dl>";
-        } else {
-            return '<div class="unexpected">Unexpected error "'.$rubric['kind'].'" encountered in generating feedback; please contact your professor</div>';
-        }
-    } catch (Exception $e) {
-        return '<div class="unexpected">Unexpected error "'.$e->getMessage().'" encountered in generating feedback; please contact your professor</div>';
-    }
-    if (array_key_exists('.mult', $details)) {
-        foreach($details['.mult'] as $mult) {
-            $c = htmlspecialchars($mult['comment']);
-            if ($mult['ratio'] > 1) {
-                $ans .= "<div class='extra credit'>$c: +".round($mult['ratio']*100-100, 2)."% extra credit</div>";
-            } else if ($mult['ratio'] == 1) {
-                $ans .= "<div class='extra comment'>$c</div>";
-            } else {
-                $ans .= "<div class='extra penalty'>$c: &minus;".round(100-$mult['ratio']*100, 2)."% penalty</div>";
-            }
-        }
-    }
-    return $ans;
-}
-function regradeTag($grade, $graderView=False) {
-    if (!array_key_exists('slug', $grade)) return '';
-    $slug = $grade['slug'];
-    $student = $grade['student'];
-    $ans = '';
-
-    if (file_exists("meta/requests/regrade/$slug-$student") || array_key_exists('regrade', $grade)) {
-        $ans .= '<div class="regrade-log" id="'."$slug\n$student\nregrade".'"><strong>regrade log:</strong>';
-        if (array_key_exists('regrade', $grade)) {
-            foreach($grade['regrade'] as $exchange) {
-                $ans .= '<pre class="regrade-request">'.htmlspecialchars($exchange['request']).'</pre>';
-                if (array_key_exists('response', $exchange)) {
-                    $ans .= '<pre class="regrade-response">'; 
-                    if ($exchange['response'])
-                        $ans .= htmlspecialchars($exchange['response']);
-                    else
-                        $ans .= '<em>(resolved without comment)</em>';
-                    $ans .= '</pre>';
-                }
-            }
-        }
-        if (file_exists("meta/requests/regrade/$slug-$student")) {
-            $ans .= '<pre class="regrade-request">'.htmlspecialchars(file_get_contents("meta/requests/regrade/$slug-$student")).'</pre>';
-            if ($graderView) $ans .= '<strong>Response:</strong><textarea class="regrade-response"></textarea>';
-        }
-        $ans .= '</div>';
-    }
-    return $ans;
-}
 
 function file_put($path, $contents) {
     umask(0);
@@ -724,6 +629,14 @@ function studentFileTag($path, $classes='left') {
     }
 }
 
+/**
+ * Dead code worth resuscitating...
+ * 
+ * This used to be used to enable having some groups have in-group-only tasks.
+ * We stopped using that feature in the courses that are driving development,
+ * and during refactors of the code stopped supporting it at all.
+ * Hooking it back up again should be doable, but is not currently a priority
+ */
 function applies_to($me, $task) {
     if (is_string($me)) $me = rosterEntry($me);
     if (!array_key_exists('groups', $me)) return True;
@@ -889,6 +802,13 @@ function asgn_details($student, $slug) {
         $details['.regrade-req'] = file_get_contents("meta/requests/regrade/$slug-$student");
     }
 
+    // add post-hoc adjustments (to support legacy team project adjustment interface); probably worth refactoring as its current implementation is inconsistent withregrade interfaces, etc.
+    if (file_exists("uploads/$slug/$user/.adjustment")) { // HACK: should probably refactor...
+        $adj = json_decode(file_get_contents("uploads/$slug/$user/.adjustment"), true);
+        $details['.adjustment'] = $adj;
+        // fields: mult, comments
+    }
+
     
 
     return $details;
@@ -1038,6 +958,7 @@ function cumulative_status($student, &$progress=False) {
          ]
 ,"comments":"In the future, you might find docs.python.org/3/ useful"
 ,".mult":{"kind":"percentage","ratio":0.8,"comments":"professionalism penalty"}
+,".adjustment":{"mult":1.25,"comments":"you did more than your fair share on this project"}
 }
 
 {"kind":"percentage"
@@ -1077,6 +998,10 @@ function score_of_task($gradeobj) {
     if (array_key_exists('.mult', $gradeobj)) {
         // (with multiplier)
         $score *= $gradeobj['.mult']['ratio'];
+    }
+    if (array_key_exists('.adjustment', $gradeobj)) {
+        // (with multiplier)
+        $score *= $gradeobj['.adjustment']['mult'];
     }
 
     return $score;
