@@ -517,6 +517,7 @@ function gradeableTree($limit=False) {
                 }
                 if (count(glob("$dir/*", GLOB_NOSORT)) == 0) { continue; } // no submission
                 $sid = explode('/',$dir)[2];
+                if (!array_key_exists($sid, $everyone)) continue; // non-student directory or file
                 if (file_exists("$dir/.partners")) {
                     $lastid = True;
                     foreach(explode("\n",file_get_contents("$dir/.partners")) as $pair) {
