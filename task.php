@@ -236,7 +236,6 @@ function show_grade($gradeobj) {
             $pen = array_key_exists('late-penalty', $gradeobj) ? $gradeobj['late-penalty'] : 0.5;
             $score = $score + ($lat-$score)*$pen;
         }
-
         $ans[] = '<tr class="break"><td colspan="2"></td></tr>';
     }
 
