@@ -1,6 +1,8 @@
-﻿<?php header('Content-Type: text/html; charset=utf-8'); ?>﻿<!DOCTYPE html>
+﻿<?php header('Content-Type: text/html; charset=utf-8');
+$metadata = json_decode(file_get_contents('meta/course.json'), true);
+?>﻿<!DOCTYPE html>
 <html><head>
-    <title>Archimedes Grading Server</title>
+    <title>File view – <?=$metadata['title']?></title>
     <style>
         body { margin:-1ex; padding:0em; border:1ex solid rgba(255,255,255,0); }
         
@@ -15,7 +17,7 @@
         .highlighted .keyword { font-weight: bold; color: #000080; }
     </style>
     <script src="dates_collapse.js"></script>
-    <script type="text/javascript" src="codebox_py.js"></script>
+    <script type="text/javascript" src="codebox_<?=array_key_exists("code-lang",$metadata)?$metadata["code-lang"]:"py"?>.js"></script>
     <script>
 function imageresize() {
     // use of devicePixelRatio does help allow page zoom, but not clear if it works for UHDA devices

@@ -268,7 +268,7 @@ function student_screen($slug, $student, $nof='') {
 header('Content-Type: text/html; charset=utf-8');
 ?>﻿<!DOCTYPE html>
 <html><head>
-    <title>Archimedes Grading Server</title>
+    <title><?=$metadata['title']?> Grading View</title>
     <link rel="stylesheet" href="display.css" type="text/css"></link>
     <style>
         .linklist li { margin:1ex 0ex; }
@@ -317,7 +317,7 @@ input + input { margin-left:0.5ex; }
 
     </style>
     <script src="dates_collapse.js"></script>
-    <script type="text/javascript" src="codebox_py.js"></script>
+    <script type="text/javascript" src="codebox_<?=array_key_exists("code-lang",$metadata)?$metadata["code-lang"]:"py"?>.js"></script>
     <script>
 /**
  * This function is supposed to change all self-sizing panels based on a page resize

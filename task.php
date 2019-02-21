@@ -11,7 +11,7 @@ if (!array_key_exists($slug, assignments())) {
 <html><head>
     <title><?=$slug?> – <?=$metadata['title']?> – <?=$me['name']?></title>
     <link rel="stylesheet" href="display.css" type="text/css"></link>
-    <script src="codebox_py.js"></script>
+    <script type="text/javascript" src="codebox_<?=array_key_exists("code-lang",$metadata)?$metadata["code-lang"]:"py"?>.js"></script>
     <script src="dates_collapse.js"></script>
 </head><body onload="dotimes(); docollapse(); highlight();">
 <?php

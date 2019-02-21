@@ -189,6 +189,10 @@ You may optionally also include
 
 -   `sections`, the list of sections to show on the code team page. Defaults to a single section with all students.
 
+-   `code-lang`, the ending of the `codebox_??.js` to include for syntax highlighting. Defaults to `py`.
+    
+    The current codebox files are quite simplistic, and may eventually be replaced with more sophisticated highlighting. If so, the nature of this configuration option may change.
+
 ## Rubrics and `.grade`s
 
 Rubrics are specified in JSON objects.
