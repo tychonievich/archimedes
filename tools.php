@@ -366,8 +366,8 @@ function logInAs($compid=false, $initial=true) {
         $user = $compid;
     } else if (array_key_exists('PHP_AUTH_USER', $_SERVER)) {
         $user = $_SERVER['PHP_AUTH_USER'];
-    } else if ($_SERVER['REMOTE_ADDR'] == '127.0.0.1' || $_SERVER['REMOTE_ADDR'] == '[::1]' || $_SERVER['REMOTE_ADDR'] == 'localhost') {
-        $user = 'lat7h'; // testing
+    //} else if ($_SERVER['REMOTE_ADDR'] == '127.0.0.1' || $_SERVER['REMOTE_ADDR'] == '[::1]' || $_SERVER['REMOTE_ADDR'] == 'localhost') {
+        //$user = 'lat7h'; // testing
     } else {
         preFeedback("ERROR: you don't appear to be authenticated with NetBadge.");
         var_dump($_SERVER);
@@ -508,7 +508,6 @@ function user_success_msg($msg) {
 
 function closeTime($assignmentDetails) {
     $close = assignmentTime('close', $assignmentDetails);
-    //if ($_SERVER['PHP_AUTH_USER'] == 'lat7h') { echo "<pre>"; var_dump($assignmentDetails); var_dump($close); echo "</pre>"; }
     if ($close === False) {
         $close = assignmentTime('due', $assignmentDetails);
         if (array_key_exists('late-days', $assignmentDetails)) {
