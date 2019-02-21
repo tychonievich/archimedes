@@ -453,9 +453,9 @@ foreach($mine as $slug=>$details) {
     if (array_key_exists('excused', $details) && $details['excused']) echo 'excused';
     else if (array_key_exists('.ext-req', $details)) echo 'extension requested';
     else if (array_key_exists('.regrade-req', $details)) echo 'request awating review';
-    else if (array_key_exists('grade', $details)) echo 'full feedback available';
     else if ($class == 'closed') {
-        if (array_key_exists('files', $details) && !array_key_exists('.files', $details))
+        if (array_key_exists('grade', $details)) echo 'full feedback available';
+        else if (array_key_exists('files', $details) && !array_key_exists('.files', $details))
             echo 'not submitted';
         else echo 'awaiting feedback';
     } else if ($class == 'pending') echo 'not yet open';
