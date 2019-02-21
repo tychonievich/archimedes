@@ -427,7 +427,7 @@ echo '</div>';
 
 
 // display feedback
-if (($close < $now)
+if ((($close < $now) || $isstaff)
 && array_key_exists('grade', $details)
 && !array_key_exists('.ext-req', $details)) {
     grader_fb($details);
@@ -441,6 +441,8 @@ if (($close < $now)
         preliminary_fb($details);
     }
 }
+
+
 
 // display upload tag
 if ($submittable) {
