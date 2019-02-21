@@ -382,7 +382,11 @@ if (array_key_exists('title', $details)) echo $details['title'];
 echo "</h1>";
 
 if (array_key_exists('link', $details))
-    echo "<p><a href='$metadata[writeup_prefix]$details[link]'>Task description</a>.</p>";
+    if (substr($details['link'],0,2) == '//' || strpos($details['link'], '://') !== FALSE) {
+        echo "<p><a href='$details[link]'>Task description</a>.</p>";
+    } else {
+        echo "<p><a href='$metadata[writeup_prefix]$details[link]'>Task description</a>.</p>";
+    }
 else if (array_key_exists('writeup', $details))
     echo "<p><a href='$metadata[writeup_prefix]$details[writeup]'>Task description</a>.</p>";
 else if (array_key_exists('title', $details)) {
