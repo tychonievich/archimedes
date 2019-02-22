@@ -777,7 +777,7 @@ function asgn_details($student, $slug) {
     natcasesort($files);
     if (count($files) > 0)
         $details['.files'] = $files;
-
+    
     // add lists of partners
     $partners = array();
     if (file_exists("uploads/$slug/$student/.partners")) {
@@ -811,6 +811,15 @@ function asgn_details($student, $slug) {
         // fields: mult, comments
     }
 
+    // tweak feedback delay to be based on submittion time, not feedback script runtime
+    if (count($files) > 0 && array_key_exists('autograde', $details) && array_key_exists('created', $details['autograde'])) {
+        $last = 0;
+        foreach($files as $submitted) {
+            $recent = filemtime($submitted);
+            if ($recent > $last) $last = $recent;
+        }
+        if ($last) $details['autograde']['created'] = $last;
+    }
     
 
     return $details;

@@ -197,6 +197,7 @@ You may optionally also include
 
 -   `grading group`, the display name for the group of students assigned to a given TA (if used).
 
+-   `supergraders`, a list of IDs of graders who are allowed to grade assignments before they close and spot-check random subsets of other graders' work.
 
 ## Rubrics and `.grade`s
 

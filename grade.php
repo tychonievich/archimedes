@@ -6,8 +6,8 @@ $noPre = true; // turn off <pre></pre> stuff
 logInAs();
 if (!$isstaff) die("page restricted to staff");
 
-$issuperuser = true; // ($user == 'lat7h' || $user == 'ez4cc' || $user == 'cap4yf' || $user == 'mg3ta'); // HACK!
-
+$issuperuser = array_key_exists('supergraders', $metadata) 
+    && in_array($user, $metadata['supergraders']);
 
 if (array_key_exists('addgrade', $_REQUEST)) {
     // retrieve and validate message
@@ -739,6 +739,9 @@ if (array_key_exists('assignment', $_REQUEST)) {
 } else {
     // show list of assignments (might be slow?)
     $options = gradeableTree();
+    if ($issuperuser) {
+        echo "<center><em>$me[name] has super-grader rights; showing open assignments and spot-check interface</em></center>";
+    }
     echo '<h2>Pick an assignment:</h2>';
     echo '<ul class="linklist">';
     foreach($options as $slug=>$stats) {
