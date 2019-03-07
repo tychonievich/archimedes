@@ -294,7 +294,8 @@ if ($isfaculty) {
         echo "<dl>\n";
         foreach($extensions as $student_id => $requests) {
             $student_name = fullRoster()[$student_id]['name'];
-            echo "<dt>$student_name ($student_id)</dt><dd><dl>";
+            $student_sections = fullRoster()[$student_id]['groups'];
+            echo "<dt>$student_name ($student_id) in sections $student_sections</dt><dd><dl>";
             foreach($requests as $assignment_name => $text) {
                 echo "<dt>$assignment_name</dt><dd><pre class='rawtext'>";
                 echo htmlspecialchars($text);

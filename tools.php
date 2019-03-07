@@ -981,6 +981,7 @@ function cumulative_status($student, &$progress=False) {
  */
 
 function score_of_task($gradeobj) {
+    if (!$gradeobj || !array_key_exists('kind', $gradeobj)) return NAN;
     if ($gradeobj['kind'] == 'percentage') return $gradeobj['ratio'];
 
     // correctness
@@ -997,15 +998,17 @@ function score_of_task($gradeobj) {
     // code coach feedback
     $human = 0;
     $human_denom = 0;
-    foreach($gradeobj['human'] as $entry) {
-        $r = $entry['ratio'];
-        $human += $entry['weight'] * $r;
-        $human_denom += $entry['weight'];
+    if (array_key_exists('human', $gradeobj)) {
+        foreach($gradeobj['human'] as $entry) {
+            $r = $entry['ratio'];
+            $human += $entry['weight'] * $r;
+            $human_denom += $entry['weight'];
+        }
     }
     
     // combined
     $aw = array_key_exists('auto-weight', $gradeobj) ? $gradeobj['auto-weight'] : 0.5;
-    $score = $human/$human_denom*(1-$aw) + $score*$aw;
+    $score = ($human_denom > 0 ? $human/$human_denom*(1-$aw) : 0) + $score*$aw;
     if (array_key_exists('.mult', $gradeobj)) {
         // (with multiplier)
         $score *= $gradeobj['.mult']['ratio'];

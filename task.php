@@ -28,7 +28,7 @@ $end = "?$plain_str";
 
 
 function accept_submission() {
-    global $user, $details, $slug;
+    global $user, $details, $slug, $metadata;
     if (!array_key_exists('submission', $_FILES)) return;
     if (count($_FILES['submission']['error']) == 1 && $_FILES['submission']['error'] == UPLOAD_ERR_NO_FILE) {
         user_error_msg("Upload action received, but no file was sent by your browser. Please try again.");
@@ -125,9 +125,16 @@ function accept_submission() {
         if (file_exists($linkdir . '.autofeedback')) unlink($linkdir . '.autofeedback');
         if (file_exists($linkdir . '.latefeedback')) unlink($linkdir . '.latefeedback');
         if (file_exists($linkdir . '.autograde')) unlink($linkdir . '.autograde');
-        if (!ensure_file("meta/queued/$slug-$user", ".$now")) {
-            user_notice_msg("Failed to queue <tt>".htmlspecialchars($name)."</tt> for automated feedback (not sure why; please report this to your professor).");
-            continue;
+        if (array_key_exists('no-queue', $metadata) && array_key_exists($details['group'], $metadata['no-queue'])) {
+            $msg = $metadata['no-queue'][$details['group']];
+            if (strlen($msg) > 0) {
+                user_notice_msg("$msg.");
+            }
+        } else {
+            if (!ensure_file("meta/queued/$slug-$user", ".$now")) {
+                user_notice_msg("Failed to queue <tt>".htmlspecialchars($name)."</tt> for automated feedback (not sure why; please report this to your professor).");
+                continue;
+            }
         }
         if (file_exists($linkdir . '.backup-' . $name)) {
             unlink($linkdir . '.backup-' . $name);
@@ -216,6 +223,8 @@ if (array_key_exists('submitted', $_GET) && $_GET['submitted']) {
 
 
 function show_grade($gradeobj) {
+    if (!$gradeobj || !array_key_exists('kind', $gradeobj))
+        return "<div class='xp-missed'>It appears the grade data on the server is malformed. Please visit Piazza, search to see if someone else has already reported this, and if not make an open question there identifying the task for which this message appeared.</div>";
     if ($gradeobj['kind'] == 'percentage') return implode('',array(
         "<div class='percentage'>",
         round($gradeobj['ratio']*100, 3),
@@ -366,7 +375,11 @@ $show_cases =  $due < $now
 $extendable = ($now < $due || !$submitted) 
     && array_key_exists('files', $details) 
     && !array_key_exists('.files', $details) 
-    && ($details['group'] != 'Lab');
+    && !(array_key_exists('no-extension', $metadata) && array_key_exists($details['group'], $metadata['no-extension']));
+
+$regradable = TRUE;
+if (array_key_exists('no-regrade', $metadata) && array_key_exists($details['group'], $metadata['no-regrade']))
+    $regradable = $metadata['no-regrade'][$details['group']];
 
 // time category
 $status = ($now < $open) ? 'is not yet open' 
@@ -512,13 +525,17 @@ if (array_key_exists('.regrade-req', $details)) {
     echo '</pre></div>';
     // edit?
 } else if (array_key_exists('grade', $details)) {
-    echo "<div class='group regrade'>";
-    echo '<p>If the above feedback does not correctly characterize your submission, please describe what we misunderstood:</p>';
-    echo "<form action='$_SERVER[SCRIPT_NAME]$end' method='post' enctype='multipart/form-data'>
-    <input type='hidden' name='slug' value='$slug'/>
-    <textarea name='regrade_request'></textarea><br/><input type='submit' value='request review of feedback'/>
-    </form>";
-    echo "</div>";
+    if ($regradable === TRUE) {
+        echo "<div class='group regrade'>";
+        echo '<p>If the above feedback does not correctly characterize your submission, please describe what we misunderstood:</p>';
+        echo "<form action='$_SERVER[SCRIPT_NAME]$end' method='post' enctype='multipart/form-data'>
+        <input type='hidden' name='slug' value='$slug'/>
+        <textarea name='regrade_request'></textarea><br/><input type='submit' value='request review of feedback'/>
+        </form>";
+        echo "</div>";
+    } else {
+        echo "<div class='group regrade'>$regradable</div>";
+    }
 }
 
 

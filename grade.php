@@ -191,11 +191,11 @@ function student_screen($slug, $student, $nof='') {
         $subs[] = studentFileTag($path);
     
     // identifier
-    $names = array(fullRoster()[$student]['name'] . " ($student)");
+    $names = array(fullRoster()[$student]['name'] . " (<a href='task.php?task=$slug&asuser=$student' target='_blank'>$student</a>)");
     if (file_exists("uploads/$slug/$student/.partners"))
         foreach(explode("\n", file_get_contents("uploads/$slug/$student/.partners")) as $other)
             if ($other != $student) {
-                $names[] = fullRoster()[$other]['name'] . " ($other)";
+                $names[] = fullRoster()[$other]['name'] . " (<a href='task.php?task=$slug&asuser=$other' target='_blank'>$other</a>)";
             }
 
     // regrade conversation
