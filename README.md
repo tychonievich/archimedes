@@ -199,6 +199,13 @@ You may optionally also include
 
 -   `supergraders`, a list of IDs of graders who are allowed to grade assignments before they close and spot-check random subsets of other graders' work.
 
+-   `no-regrade`, an object with keys being assignment `group`s and values being the text to show instead of the regrade submission form.
+
+-   `no-extension`, an object with keys being assignment `group`s that may not submit extension requests.
+    Currently values are ignored.
+
+-   `no-queue`, an object with keys being assignment `group`s that should not be queued for automated feedback when submitted and values to display upon submission (not displayed if `""`).
+
 ## Rubrics and `.grade`s
 
 Rubrics are specified in JSON objects.
