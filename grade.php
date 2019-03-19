@@ -120,10 +120,10 @@ function percent_tree($details) {
 
 function hybrid_tree($details) {
     $id = "$details[slug]|$details[student]";
-    
+
     if (array_key_exists('ontime', $details)) {
         $ontime = round($details['ontime']['correctness'] * 100, 1) . '% correct when due';
-        $late = round($details['auograde']['correctness'] * 100, 1) . '% correct eventually';
+        $late = round($details['autograde']['correctness'] * 100, 1) . '% correct eventually';
     } else if (array_key_exists('autograde', $details)) {
         $ontime = round($details['autograde']['correctness'] * 100, 1) . '% correct';
         $late = '';

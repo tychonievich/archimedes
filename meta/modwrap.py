@@ -192,7 +192,7 @@ def check_hidden(fname, src=None, ban_tokens=(), allow=()):
     import ast, _ast
     if src is None:
         with open(fname, 'r') as f:
-            src = f.read()
+            src = f.read().strip('\ufeff')
 
     if ban_tokens:
         import tokenize, io
