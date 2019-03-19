@@ -116,7 +116,7 @@ class IOStub:
     
     def imp(self, name, globals=None, locals=None, fromlist=(), level=0):
         if name not in self._permitted:
-            raise TestPermissionError('not allowed to import '+name)
+            raise TestPermissionError('not allowed to use "import '+name+'"')
         mod = __import__(name, globals, locals, fromlist, level)
         if name == 'os' or name == 'os.path':
             mod = wrap(mod, 'os',

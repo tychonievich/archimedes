@@ -70,9 +70,11 @@ if (array_key_exists('addgrade', $_REQUEST)) {
     // post to uploads/assignment/.gradelog and uploads/assignment/student/.grade
     $payload = json_encode($grade);
     file_put("uploads/$grade[slug]/$grade[student]/.grade", $payload)  || die('failed to record grade (may be server permission error?)');
+    file_append("users/.graded/$user/$grade[slug]", "$grade[student]\n");
     if (file_exists("uploads/$grade[slug]/$grade[student]/.partners")) {
         foreach(explode("\n",file_get_contents("uploads/$grade[slug]/$grade[student]/.partners")) as $pair) {
             file_put("uploads/$grade[slug]/$pair/.grade", $payload);
+            file_append("users/.graded/$user/$grade[slug]", "$pair\n");
         }
     }
     file_append("uploads/$grade[slug]/.gradelog", "$payload\n");

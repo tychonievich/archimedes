@@ -468,6 +468,13 @@ class Tester:
                 "correctness":0,
                 "details":ex_msg(res)
             }
+        elif isinstance(res, modwrap.TestPermissionError):
+            return {
+                "feedback":"Code rules violated: "+str(res),
+                "missed":["Code rules violated: "+str(res)],
+                "correctness":0,
+                "details":ex_msg(res)
+            }
         elif isinstance(res, BaseException):
             msg,tb = ex_msg(res)
             return {
