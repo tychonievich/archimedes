@@ -28,7 +28,7 @@ $end = "?$plain_str";
 
 
 function accept_submission() {
-    global $user, $details, $slug, $metadata;
+    global $user, $details, $slug, $metadata, $isstaff, $isself;
     if (!array_key_exists('submission', $_FILES)) return;
     if (count($_FILES['submission']['error']) == 1 && $_FILES['submission']['error'] == UPLOAD_ERR_NO_FILE) {
         user_error_msg("Upload action received, but no file was sent by your browser. Please try again.");
@@ -47,7 +47,7 @@ function accept_submission() {
         return;
     }
     if (closeTime($details) < time() && !($isstaff && $isself)) {
-        user_error_msg("Tried to upload files for <strong>$slug</strong>, which has alreayd closed.");
+        user_error_msg("Tried to upload files for <strong>$slug</strong>, which has already closed.");
         return;
     }
     
