@@ -319,7 +319,7 @@ function testcase_fb($details) {
         echo prettyTime($details['autograde']['created']);
         echo ', passed ';
         echo count($details['autograde']['details']) - count($details['autograde']['missed']);
-        echo ' test cases</p><p>Example failed test: <code>';
+        echo ' test cases</p><p>One example failed test (there may be others): <code>';
         echo htmlspecialchars($details['autograde']['missed'][0]);
         echo '</code></p>';
         /*/ // show all test cases
