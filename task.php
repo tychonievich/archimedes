@@ -148,7 +148,7 @@ function accept_submission() {
 
 function accept_extension() {
     global $user, $slug, $details;
-    if (array_key_exists('extension_request', $_POST) && (!array_key_exists('submission', $_FILES) || count($_FILES['submission']) == 0)) {
+    if (array_key_exists('extension_request', $_POST) && strlen(trim($_POST['extension_request'])) > 0 && (!array_key_exists('submission', $_FILES) || count($_FILES['submission']) == 0)) {
         if (!array_key_exists('slug', $_POST) || ($_POST['slug'] != $_GET['task'])) {
             user_error_msg("Received request without an associated assignment, which cannot be processed by this site. Please email your professor directly.");
         } else {

@@ -5,6 +5,33 @@ include "tools.php";
 logInAs();
 if (!hasFacultyRole($me)) { die("Only faculty may view this page"); }
 
+
+
+foreach(fullRoster() as $id=>$details) {
+    if (hasStaffRole($details)) continue;
+    $section = array_key_exists('groups', $details) ? strpos($details['groups'], "-00") : 0;
+    if ($section > 0) { $section = substr($details['groups'], $section-4, 8); }
+    else { $section = ''; } 
+
+    $overall = cumulative_status($id);
+    $ep = 0; $fp = 0; $mp = 0;
+    foreach($overall as $grp=>$scores) {
+        $ep += $scores['weight'] * $scores['earned'];
+        $fp += $scores['weight'] * $scores['future'];
+        $mp += $scores['weight'] * $scores['missed'];
+    }
+    $overall = $ep + $mp > 0 ? 100*$ep / ($ep + $mp) : '';
+    $bar =  svg_progress_bar($ep, $fp, $mp);
+
+
+    echo $id;
+    echo ",\"$details[name]\""; // Name
+    echo ",\"$section\""; // Groups
+    echo ",$overall"; // cumulative
+    echo "\n";
+}
+
+/*
 function csv_row_for($user) {
     if ($user == null) {
         $row = array(
@@ -49,5 +76,5 @@ foreach(fullRoster() as $id=>$details) {
 }
 
 fclose($fh);
-
+*/
 ?>﻿

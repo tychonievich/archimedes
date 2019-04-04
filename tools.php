@@ -728,6 +728,10 @@ function asgn_details($student, $slug) {
             'feedback'=> $afb['stdout'],
             'created' => filemtime("uploads/$slug/$student/.autofeedback"),
         );
+    } else if (count(glob("uploads/$slug/$student/*")) > 0) {
+        $details['autograde'] = array(
+            'feedback'=> "no automated tests",
+        );
     } else if (closeTime($details) < time()) {
         $details['autograde'] = $nopoints;
     }
