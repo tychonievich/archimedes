@@ -716,11 +716,14 @@ function asgn_details($student, $slug) {
         $details['excused'] = TRUE;
         $details['weight'] = 0;
     }
-    if (file_exists("uploads/$slug/$student/.grade")) 
+    if (file_exists("uploads/$slug/$student/.grade"))
         $details['grade'] = json_decode(file_get_contents("uploads/$slug/$student/.grade"), TRUE);
     if (file_exists("uploads/$slug/$student/.autograde")) {
         $details['autograde'] = json_decode(file_get_contents("uploads/$slug/$student/.autograde"), TRUE);
         $details['autograde']['created'] = filemtime("uploads/$slug/$student/.autograde");
+        if (array_key_exists('grade', $details) && $details['grade']['auto'] < $details['autograde']['correctness']) { // HACK to deal with re-run tests
+            $details['grade']['auto']  = $details['autograde']['correctness'];
+        }
         // delay should be from submission, not feedback
     } else if (file_exists("uploads/$slug/$student/.autofeedback")) {
         $afb = json_decode(file_get_contents("uploads/$slug/$student/.autofeedback"), TRUE);

@@ -283,6 +283,18 @@ if __name__ == "__main__":
                         import json
                         path = obj.args[0]
                         subdir, pyfile, dst, afb, lfb, slug = ppath(path)
+                        if 'timeout' in obj.status():
+                            print('posting timeout message to', dst)
+                            try:
+                                with open(dst, 'w') as f:
+                                    json.dump({
+                                        'feedback':'Your code timed out (perhaps you have an infinite loop?)',
+                                        'missed':["code timed out (as if by an infinite loop)"],
+                                        "correctness":0,
+                                        "details":[obj.status()]
+                                    },f)
+                            except BaseException as ex: 
+                                print(testmaker.ex_msg(ex)[1])
                         if not os.path.exists(afb):
                             try:
                                 with open(afb, 'w') as f:

@@ -235,6 +235,12 @@ function show_grade($gradeobj) {
     $ans = array();
     $ans[] = '<table class="feedback"><tbody>';
 
+if ($_SERVER['PHP_AUTH_USER'] == 'lat7h' && false) {
+    preFeedback('');
+    var_dump($gradeobj);
+    leavePre();
+}
+
     // correctness
     if ($gradeobj['auto-weight'] > 0) {
         $score = $gradeobj['auto'];

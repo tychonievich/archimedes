@@ -291,11 +291,14 @@ else:
         print(name, file=f)
         print(age, file=f)
 print('Being', age+1,'will be even better than being', str(age)+'!')
+# exit()
 '''
     co,tree,g,i = safe_execable('older.py', code, ['os', 'os.path'])
     
     i.reset('Guy', '35')
-    exec(co,g)
+    try:
+        exec(co,g)
+    except SystemExit: pass
     print(i.outputs)
 
     i.reset(filereset=False)

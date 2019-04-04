@@ -40,6 +40,13 @@ parse task/whatever.yaml into a Test object
 This file is based on earlier code by the same author: https://github.com/tychonievich/pypractice
 '''
 
+def exec_exit(*args, **kwargs):
+    '''Students use exit() and quit() willy-nilly; this protects against that'''
+    try:
+        exec(*args, **kwargs)
+    except SystemExit:
+        pass
+
 def req_recursion(node):
     '''An ast predicate tshat requires a recursive function somewhere in the tree'''
     # recursion occurs when a node invokes itself
@@ -161,14 +168,15 @@ def compare_result(wanted, got):
 def run(exe, funcname=None, inputs=None, args=(), kwargs={}):
     co,tree,gl,io = exe
     if inputs is not None: io.reset(inputs)
-    exec(co, gl)
     if funcname:
+        exec(co, gl)
         if funcname not in gl:
             raise NameError('no function named '+funcname)
         elif not callable(gl[funcname]):
             raise ValueError(funcname+' is not a function')
         retval = gl[funcname](*args, **kwargs)
     else:
+        exec_exit(co, gl)
         retval = None
     return retval, io.outputs
 
@@ -360,10 +368,19 @@ class Tester:
                     uo, go = [], []
                     try:
                         ur, uo = run(user, self.func, case.get('inputs'), _uca, _uck)
+                    # except modwrap.TestPermissionError as ex:
+                        # report['error'] = str(ex)
+                        # report['feedback'] = str(ex)
+                        # results.append(report)
+                        # continue
                     except BaseException as ex:
                         ur = ex
                     try:
                         gr, go = run(self.solution, self.func, case.get('inputs'), _gca, _gck)
+                    except modwrap.TestPermissionError as ex:
+                        report['error'] = str(ex)
+                        results.append(report)
+                        continue
                     except BaseException as ex:
                         gr = ex
                     
