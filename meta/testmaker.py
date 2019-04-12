@@ -82,7 +82,29 @@ def ban(*names):
                 raise ValueError('use of name "'+node.attr+'" prohibited')
                 
     return ans
-    
+
+def summarize(node):
+    '''And AST parser that returns the structure of the code'''
+    flat = []
+    for n in ast.iter_child_nodes(node):
+        if isinstance(n, (_ast.AsyncFor, _ast.For)):
+            flat.append('for')
+        elif isinstance(n, (_ast.While)):
+            flat.append('while')
+        elif isinstance(n, (_ast.IfExp, _ast.If)):
+            flat.append('if')
+        elif isinstance(n, (_ast.Continue, _ast.Break)):
+            flat.append('goto')
+        elif isinstance(n, (_ast.FunctionDef, _ast.AsyncFunctionDef, _ast.Lambda)):
+            flat.append('def')
+        elif isinstance(n, (_ast.ListComp, _ast.SetComp, _ast.DictComp, _ast.GeneratorExp)):
+            flat.append('comprehension')
+        elif isinstance(n, (_ast.Yield, _ast.YieldFrom)):
+            flat.append('yield')
+        nested = summarize(n)
+        if nested: flat.append(nested)
+    return flat
+
 
 def ex_msg(ex):
     '''turns an exception into a one-line and multi-line message.'''
@@ -113,7 +135,7 @@ def case_str(case, func='f'):
         ans += ', '.join(repr(_) for _ in case['args'])
     if case.get('kwargs',{}):
         if len(ans) > 0: ans += ', '
-        ans += ', ',join(_k+'='+repr(_v) for _k,_v in case['kwargs'].items())
+        ans += ', '.join(_k+'='+repr(_v) for _k,_v in case['kwargs'].items())
     if case.get('args',()) or case.get('kwargs',{}):
         ans += ')'
     if case.get('inputs',()):
@@ -155,7 +177,7 @@ def compare_result(wanted, got):
         if wanted.strip() == got.strip(): return True
         if len(wanted) > 2 and wanted[0] == '/' and wanted[-1] == '/':
             import re
-            if re.search(wanted[1:-1], got) is not None: return True
+            if re.search(wanted[1:-1], got, re.DOTALL) is not None: return True
     if callable(wanted):
         try:
             if wanted(got): return True
@@ -219,8 +241,11 @@ class MultiTester:
             result['missed'].extend(v.get('missed',[]))
             w = self.funcs[k]['weight']
             for e in v.get('details',[]):
-                e.setdefault('weight',1)
-                e['weight'] *= w / len(v.get('details',[]))
+                if type(e) is dict:
+                    e.setdefault('weight',1)
+                    e['weight'] *= w / len(v.get('details',[]))
+                else:
+                    print("unexpected entry in details:", repr(e))
             result['details'].extend(v.get('details',[]))
             num += w * v['correctness']
             denom += w
@@ -341,7 +366,7 @@ class Tester:
                 
                 if 'src_re' in case:
                     import re
-                    if re.compile(case['src_re']).search(src):
+                    if re.compile(case['src_re'], re.DOTALL).search(src):
                         report['correct'] = True
                     results.append(report)
                     continue
