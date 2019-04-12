@@ -32,7 +32,7 @@ parse task/whatever.yaml into a Test object
         if none, skip check
         else, use as-is
     predicate:
-        the string body of a function to be called and (outputs, retval) arguments
+        the string body of a function to be called and (outputs, retval, globals) arguments
         hence, always exec'd and then called
     constraints:
         always eval'd
@@ -200,7 +200,7 @@ def run(exe, funcname=None, inputs=None, args=(), kwargs={}):
     else:
         exec_exit(co, gl)
         retval = None
-    return retval, io.outputs
+    return retval, io.outputs, gl
 
 def asfunc(src, header):
     if 'return' not in src and 'raise' not in src:
@@ -291,7 +291,7 @@ class Tester:
             if type(ans.get('outputs')) is str:
                 ans['outputs'] = self.compile(asfunc(ans['outputs'], 'def printed()'))
             if type(ans.get('predicate')) is str:
-                ans['predicate'] = self.compile(asfunc(ans['predicate'], 'def predicate(retval, outputs, args, kwargs)'))
+                ans['predicate'] = self.compile(asfunc(ans['predicate'], 'def predicate(retval, outputs, globals, args, kwargs)'))
             if 'name' not in ans: ans['name'] = case_str(ans, self.func or 'f')
             if 'weight' not in ans: ans['weight'] = 1
             if 'test_code' in ans:
@@ -392,7 +392,7 @@ class Tester:
                     _gca, _gck = copy.deepcopy(case.get('args',())), copy.deepcopy(case.get('kwargs',{}))
                     uo, go = [], []
                     try:
-                        ur, uo = run(user, self.func, case.get('inputs'), _uca, _uck)
+                        ur, uo, ugl = run(user, self.func, case.get('inputs'), _uca, _uck)
                     # except modwrap.TestPermissionError as ex:
                         # report['error'] = str(ex)
                         # report['feedback'] = str(ex)
@@ -401,7 +401,7 @@ class Tester:
                     except BaseException as ex:
                         ur = ex
                     try:
-                        gr, go = run(self.solution, self.func, case.get('inputs'), _gca, _gck)
+                        gr, go, ggl = run(self.solution, self.func, case.get('inputs'), _gca, _gck)
                     except modwrap.TestPermissionError as ex:
                         report['error'] = str(ex)
                         results.append(report)
@@ -425,7 +425,7 @@ class Tester:
                     # run constraints first (they can have specialized messages)
                     failed = False
                     for con in self.constraints:
-                        r,o = run(con['rule'], 'rule', None, (ur, uo), {})
+                        r,o,_gl = run(con['rule'], 'rule', None, (ur, uo), {})
                         if r is False:
                             report['error'] = case.get('message', 'wrong result')
                             results.append(report)
@@ -445,7 +445,7 @@ class Tester:
                     # if not but there is retval and/or outputs, use them, running them if needed
                     # else if exact, compare ur and gr, uo and go
                     if 'predicate' in case:
-                        r,o = run(case['predicate'], 'predicate', None, (ur, uo, _uca, _uck), {})
+                        r,o,_gl = run(case['predicate'], 'predicate', None, (ur, uo, ugl, _uca, _uck), {})
                         if r == False:
                             report['error'] = case.get('message', 'wrong result')
                             results.append(report)

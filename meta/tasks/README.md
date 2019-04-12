@@ -144,7 +144,7 @@ Each test case specifies some subset of
 -   `inputs`, a list of things to simulate the user typing in response to each `input(...)` command
 -   `retval`, the value returned by the `func`tion
 -   `outputs`, a list of things printed with `print` and `input` separated by inputs.
--   `predicate`, a function body with parameters `retval`, `outputs`, `args`, and `kwargs`. The `args` and `kwargs` passed to a `predicate` are the post-invocation values, to permit checking functions that are supposed to modify their arguments.
+-   `predicate`, a function body with parameters `retval`, `outputs`, `globals`, `args`, and `kwargs`. The `args` and `kwargs` passed to a `predicate` are the post-invocation values, to permit checking functions that are supposed to modify their arguments.
 
 Each case may also specify
 
