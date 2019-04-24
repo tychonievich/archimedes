@@ -228,7 +228,7 @@ if __name__ == "__main__":
         and puts the request handler in the list'''
         def newfile(self, path):
             if queue in path:
-                PIDWrap(1, newcode, (path,)) # 1 CPU second, 10 wall-clock seconds
+                PIDWrap(5, newcode, (path,)) # 5 CPU second, 50 wall-clock seconds
             elif tasks in path:
                 newtask(path) # PIDWrap(1, newtask, (path,))
             else:
