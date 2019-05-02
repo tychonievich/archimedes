@@ -379,6 +379,18 @@ if ($isfaculty) {
     <?php
 }
 
+// get time
+$now = time();
+
+// preserve get arguments
+$plain_str = $_GET;
+if (array_key_exists('submitted', $plain_str)) { unset($plain_str['submitted']); }
+if (array_key_exists('task', $plain_str)) { unset($plain_str['task']); }
+$plain_str = http_build_query($plain_str);
+$ext = "&$plain_str";
+$end = "?$plain_str";
+
+
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////// collect user submission details /////////////////////////
 $mine = array();
@@ -415,6 +427,7 @@ foreach($overall as $slug=>$details) {
     echo "</td>";
 }
 ?></tr></tbody></table>
+<a href="grade_breakdown.php<?=$end?>">View full grade computation</a>
 </div></div>
 
 
@@ -425,16 +438,6 @@ foreach($overall as $slug=>$details) {
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////// list assignments ////////////////////////////////////
 
-// get time
-$now = time();
-
-// preserve get arguments
-$plain_str = $_GET;
-if (array_key_exists('submitted', $plain_str)) { unset($plain_str['submitted']); }
-if (array_key_exists('task', $plain_str)) { unset($plain_str['task']); }
-$plain_str = http_build_query($plain_str);
-$ext = "&$plain_str";
-$end = "?$plain_str";
 
 
 // show assignments
