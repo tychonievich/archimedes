@@ -621,7 +621,9 @@ function studentFileTag($path, $classes='left') {
             return "<a href='$link' target='_blank'><img class='$classes width height' src='$link'/></a><br/><input type='button' value='toggle image visibility' onclick='e=this.previousSibling.previousSibling; e.setAttribute(\"style\", e.getAttribute(\"style\") ? \"\" : \"display:none\")'/>";
             //  return "<a href='$link' target='_blank'><img class='$classes width height' src='$link'/></a>";
         } else if (stripos($mime, 'text') !== FALSE) {
-            return "<div class='$classes width'>File <a href='$link' target='_blank'><tt>$title</tt></a>: <input type='button' style='font-family:monospace' value='toggle visibility' onclick='e=this.nextSibling; e.setAttribute(\"style\", e.getAttribute(\"style\") ? \"\" : \"display:none\")'/><pre><code>" . htmlspecialchars(file_get_contents($path)) . "</code></pre></div>";
+            $contents = file_get_contents($path);
+            $contents = preg_replace('/[^\n\r \t!-~]/', '', $contents);
+            return "<div class='$classes width'>File <a href='$link' target='_blank'><tt>$title</tt></a>: <input type='button' style='font-family:monospace' value='toggle visibility' onclick='e=this.nextSibling; e.setAttribute(\"style\", e.getAttribute(\"style\") ? \"\" : \"display:none\")'/><pre><code>" . htmlspecialchars($contents) . "</code></pre></div>";
         } else if (is_dir($path)) {
             $vlink = 'view.php?file='.rawurlencode(explode('/',$path,2)[1]);
             return "<div class='$classes width'>Directory <a href='$vlink'><tt>$title</tt></a></div>";
@@ -808,7 +810,7 @@ function asgn_details($student, $slug) {
     }
     // add regrade request
     if (file_exists("meta/requests/regrade/$slug-$student")) {
-        $details['.regrade-req'] = file_get_contents("meta/requests/regrade/$slug-$student");
+        $details['.regrade-req'] = '(feedback last updated '.date('Y-m-d H:i', filemtime("uploads/$slug/$student/.grade")).'; this request submitted '.date('Y-m-d H:i', filemtime("meta/requests/regrade/$slug-$student")).")\n".file_get_contents("meta/requests/regrade/$slug-$student");
     }
 
     // add post-hoc adjustments (to support legacy team project adjustment interface); probably worth refactoring as its current implementation is inconsistent withregrade interfaces, etc.

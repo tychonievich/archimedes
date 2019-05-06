@@ -280,6 +280,7 @@ if ($isstaff) {
 }
 if ($isfaculty) {
     $extensions = array();
+    $extensions_dates = array();
     foreach(glob("meta/requests/extension/*") as $request_path) {
         $request = basename($request_path);
         $i = strrpos($request, '-');
@@ -287,6 +288,8 @@ if ($isfaculty) {
         $student_id = substr($request, $i+1);
         if (!array_key_exists($student_id, $extensions)) $extensions[$student_id] = array();
         $extensions[$student_id][$assignment_name] = file_get_contents($request_path);
+        if (!array_key_exists($student_id, $extensions_dates)) $extensions_dates[$student_id] = array();
+        $extensions_dates[$student_id][$assignment_name] = prettyTime(filemtime($request_path));
     }
     $n = count($extensions);
     if ($n > 0) {
@@ -297,7 +300,8 @@ if ($isfaculty) {
             $student_sections = fullRoster()[$student_id]['groups'];
             echo "<dt>$student_name ($student_id) in sections $student_sections</dt><dd><dl>";
             foreach($requests as $assignment_name => $text) {
-                echo "<dt>$assignment_name</dt><dd><pre class='rawtext'>";
+                $datetime = $extensions_dates[$student_id][$assignment_name];
+                echo "<dt>$assignment_name (submitted $datetime)</dt><dd><pre class='rawtext'>";
                 echo htmlspecialchars($text);
                 echo "</pre>";
                 echo "<form action='$_SERVER[REQUEST_URI]' method='post'>";
