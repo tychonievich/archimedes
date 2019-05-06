@@ -157,7 +157,7 @@ class PIDWrap:
     whichever is smaller.
     """
     count = 0
-    limit = max(1,len(os.sched_getaffinity(0))) * 10
+    limit = max(1,len(os.sched_getaffinity(0)))
     objs = set()
     
     def __init__(self, limit, func, args=(), kargs={}):
@@ -283,6 +283,7 @@ if __name__ == "__main__":
                         import json
                         path = obj.args[0]
                         subdir, pyfile, dst, afb, lfb, slug = ppath(path)
+                        dst2 = os.path.join(os.path.dirname(os.path.dirname(dst)), os.path.basename(dst))
                         if 'timeout' in obj.status():
                             print('posting timeout message to', dst)
                             try:
@@ -293,15 +294,19 @@ if __name__ == "__main__":
                                         "correctness":0,
                                         "details":[obj.status()]
                                     },f)
+                                if os.path.exists(dst2): os.unlink(dst2)
+                                os.link(dst, dst2)
                             except BaseException as ex: 
                                 print(testmaker.ex_msg(ex)[1])
                         if not os.path.exists(afb):
+                            print('missing', afb)
                             try:
                                 with open(afb, 'w') as f:
                                     json.dump({'stdout':'unable to test code ('+obj.status()+')'},f)
                             except BaseException as ex: 
                                 print(testmaker.ex_msg(ex)[1])
                         if not os.path.exists(lfb):
+                            print('missing', lfb)
                             try:
                                 with open(lfb, 'w') as f:
                                     json.dump({'stdout':'unable to test code ('+obj.status()+')'},f)
