@@ -21,7 +21,7 @@ foreach(fullRoster() as $id=>$details) {
         echo "compid";
         echo ",name";
         echo ",section,";
-        echo ",cumulative,";
+        echo ",cumulative,letter,";
         foreach($overall as $grp=>$scores) {
             echo ",$grp total [$scores[weight]]";
         }
@@ -38,6 +38,7 @@ foreach(fullRoster() as $id=>$details) {
     echo ",\"$details[name]\""; // Name
     echo ",\"$section\","; // Groups
     echo ",$final,"; // cumulative
+    echo letterOf($final/100).",";
     foreach($overall as $grp=>$scores) {
         echo "," . ($scores['earned']/($scores['earned']+$scores['missed']));
     }

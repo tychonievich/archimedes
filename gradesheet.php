@@ -68,6 +68,7 @@ if (!hasFacultyRole($me)) { die("<p>Only faculty may view this page</p></body></
         <th onclick="sortcolumn('tbody',1,true)">Name ⇕</th>
         <th onclick="sortcolumn('tbody',2,true)">Section ⇕</th>
         <th onclick="sortcolumn('tbody',3,true)">Grade ⇕</th>
+        <th>Letter</th>
         <th>Progress</th>
 </tr></thead>
 <tbody id="tbody">
@@ -90,12 +91,13 @@ foreach(fullRoster() as $id=>$details) {
     }
     $bar =  svg_progress_bar($ep, $fp, $mp);
 
-
     echo '<tr>';
     echo "<td><a href='index.php?asuser=$id'>$id</a></td>"; // ID
     echo "<td>$details[name]</td>"; // Name
     echo "<td>$section</td>"; // Groups
-    echo "<td>$final</td><td>$bar</td>";
+    echo "<td>$final</td><td>";
+    echo letterOf($final/100, true);
+    echo "</td><td>$bar</td>";
     echo '</tr>';
 }
 

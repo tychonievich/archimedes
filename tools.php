@@ -970,7 +970,7 @@ function cumulative_status($student, &$progress=False, &$projected_score=False) 
             }
         }
         if ($too_little_data) $projected_score = 'insufficient data';
-        else $projected_score = ($projected_score/$projected_weight).'%';
+        else $projected_score = ($projected_score/$projected_weight);
     }
     
     return $ans;
