@@ -79,14 +79,15 @@ foreach(fullRoster() as $id=>$details) {
     if ($section > 0) { $section = substr($details['groups'], $section-4, 8); }
     else { $section = ''; } 
 
-    $overall = cumulative_status($id);
+    $final = 0;
+    $ignore = False;
+    $overall = cumulative_status($id, $ignore, $final);
     $ep = 0; $fp = 0; $mp = 0;
     foreach($overall as $grp=>$scores) {
         $ep += $scores['weight'] * $scores['earned'];
         $fp += $scores['weight'] * $scores['future'];
         $mp += $scores['weight'] * $scores['missed'];
     }
-    $overall = $ep + $mp > 0 ? 100*$ep / ($ep + $mp) : '';
     $bar =  svg_progress_bar($ep, $fp, $mp);
 
 
@@ -94,7 +95,7 @@ foreach(fullRoster() as $id=>$details) {
     echo "<td><a href='index.php?asuser=$id'>$id</a></td>"; // ID
     echo "<td>$details[name]</td>"; // Name
     echo "<td>$section</td>"; // Groups
-    echo "<td>$overall</td><td>$bar</td>";
+    echo "<td>$final</td><td>$bar</td>";
     echo '</tr>';
 }
 

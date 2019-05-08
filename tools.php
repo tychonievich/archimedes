@@ -723,7 +723,7 @@ function asgn_details($student, $slug) {
     if (file_exists("uploads/$slug/$student/.autograde")) {
         $details['autograde'] = json_decode(file_get_contents("uploads/$slug/$student/.autograde"), TRUE);
         $details['autograde']['created'] = filemtime("uploads/$slug/$student/.autograde");
-        if (array_key_exists('grade', $details) && $details['grade']['auto'] < $details['autograde']['correctness']) { // HACK to deal with re-run tests
+        if (array_key_exists('grade', $details) && (!array_key_exists('auto', $details['grade']) || $details['grade']['auto'] < $details['autograde']['correctness'])) { // HACK to deal with re-run tests
             $details['grade']['auto']  = $details['autograde']['correctness'];
         }
         // delay should be from submission, not feedback
@@ -867,7 +867,7 @@ function dropper($count, &$scores) {
  * .gcode = array subset of 'missed', 'excused', 'dropped', 'future', 'contested', 'graded', 'non-credit'
  * .score = number between 0 and 1
  */
-function cumulative_status($student, &$progress=False) {
+function cumulative_status($student, &$progress=False, &$projected_score=False) {
     if ($progress === False) {
         $progress = array();
         foreach(assignments() as $slug=>$details) {
@@ -952,6 +952,27 @@ function cumulative_status($student, &$progress=False) {
         unset($entry['past']);
         $entry['weight'] = $cg['weights'][$grp];
     }
+    
+    // compute total if desired
+    if ($projected_score !== FALSE) {
+        $too_little_data = FALSE;
+        $projected_score = 0;
+        $projected_weight = 0;
+        foreach($ans as $grp=>$scores) {
+            if ($scores['weight'] != 0 && $scores['earned'] == 0 && $scores['missed'] == 0) {
+                $too_little_data = TRUE;
+            } else if ($scores['weight'] != 0) {
+                $ep = $scores['earned'];
+                $fp = $scores['future'];
+                $mp = $scores['missed'];
+                $projected_score += $scores['weight'] * 100*$ep / ($ep + $mp);
+                $projected_weight += $scores['weight'];
+            }
+        }
+        if ($too_little_data) $projected_score = 'insufficient data';
+        else $projected_score = ($projected_score/$projected_weight).'%';
+    }
+    
     return $ans;
 }
 

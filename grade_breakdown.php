@@ -1,4 +1,9 @@
-﻿<?php
+﻿<!DOCTYPE HTML>
+<html><head><title>Points Breakdown</title>
+<style>
+    .cumulative { background-color: rgba(255,255,0,0.25); }
+    .group { background-color: rgba(0,0,0,0.125); }
+</style></head><body><?php
 
 header('Content-Type: text/html; charset=utf-8'); 
 include "tools.php";
@@ -12,26 +17,24 @@ if ($section > 0) { $section = substr($details['groups'], $section-4, 8); }
 else { $section = ''; } 
 
 $bits = FALSE;
-$overall = cumulative_status($id, $bits);
-$ep = 0; $fp = 0; $mp = 0;
-foreach($overall as $grp=>$scores) {
-    $ep += $scores['weight'] * $scores['earned'];
-    $fp += $scores['weight'] * $scores['future'];
-    $mp += $scores['weight'] * $scores['missed'];
-}
-$final = $ep + $mp > 0 ? 100*$ep / ($ep + $mp) : '';
+$final = 0;
+$overall = cumulative_status($id, $bits, $final);
 
 echo "$details[name] ($id)\n";
 
 echo '<table border="1"><thead><tr><th>Task</th><th>Weight within kind</th><th>Weight overall</th><th>Score</th><th>Status</th></tr></thead><tbody>
 ';
 
-echo "<tr><td>Cumulative</td><td></td><td>100%</td><td>$final%</td></tr>\n";
+echo "<tr class='cumulative'><td colspan='3'>Cumulative</td><td>$final</td></tr>\n";
 
 foreach($overall as $grp=>$scores) {
-    $raw = ($scores['earned']/($scores['earned']+$scores['missed'])) * 100;
     $weight = $scores['weight']*100;
-    echo "<tr><td>$grp</td><td></td><td>$weight%</td><td>$raw%</td></tr>\n";
+    if (($scores['earned']+$scores['missed']) == 0) {
+        echo "<tr class='group'><td colspan='2'>$grp total</td><td>$weight%</td><td>insufficient data</td></tr>\n";
+    } else {
+        $raw = ($scores['earned']/($scores['earned']+$scores['missed'])) * 100;
+        echo "<tr class='group'><td colspan='2'>$grp total</td><td>$weight%</td><td>$raw%</td></tr>\n";
+    }
 }
 
 foreach($overall as $grp=>$scores) {
@@ -59,39 +62,7 @@ foreach($overall as $grp=>$scores) {
         }
 }
 
-/*
-if (!$header_shown) {
-    echo "compid";
-    echo ",name";
-    echo ",section,";
-    echo ",cumulative,";
-    foreach($overall as $grp=>$scores) {
-        echo ",$grp total [$scores[weight]]";
-    }
-    echo ",";
-    foreach($overall as $grp=>$scores)
-        foreach($bits as $slug=>$data)
-            if ($data['group'] == $grp)
-                echo ",$slug";
-    echo "\n";
-    $header_shown = TRUE;
-}
-
-echo $id;
-echo ",\"$details[name]\""; // Name
-echo ",\"$section\","; // Groups
-echo ",$final,"; // cumulative
-foreach($overall as $grp=>$scores) {
-    echo "," . ($scores['earned']/($scores['earned']+$scores['missed']));
-}
-echo ",";
-foreach($overall as $grp=>$scores)
-    foreach($bits as $slug=>$data)
-        if ($data['group'] == $grp)
-            echo ",".$data[".score"];
-echo "\n";
-*/
 echo '</tbody></table>';
 
 
-?>﻿
+?>﻿</body></html>

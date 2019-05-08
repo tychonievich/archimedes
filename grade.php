@@ -234,6 +234,7 @@ function student_screen($slug, $student, $nof='') {
         // FIXME: show all test cases in detail
         if (array_key_exists('missed', $details['autograde']) && count($details['autograde']['missed']) > 0) {
             $secret = "Missed tests:\n- " . implode("\n- ", $details['autograde']['missed']);
+            $secret .= "\n\n-------------------\nFull details:\n" . json_encode($details['autograde']['details'], JSON_PRETTY_PRINT);
         } else {
             $secret = 'passed every test case';
         }
@@ -758,7 +759,7 @@ if (array_key_exists('assignment', $_REQUEST)) {
         }
         if ($stats['regrade'] > 0) echo "; <span class='regrades'>pending <a href='$_SERVER[SCRIPT_NAME]?assignment=$slug&redo=regrade'>regrades: $stats[regrade]</a></span>";
         if ($issuperuser) echo "; view <a href='$_SERVER[SCRIPT_NAME]?assignment=$slug&grader=all&redo=own&limit=20'>20 random submissions</a>";
-        if ($stats['ungraded'] > 0 && $stats['ungraded'] < 100) {
+        if ($stats['ungraded'] > 0 /*&& $stats['ungraded'] < 100*/) {
             echo "; grade <a class='ungraded' href='?assignment=$slug&grader=all'>all $stats[ungraded] remaining</a>"; 
             if ($stats['ungraded'] > 12) {
                 echo " (or just a random <a class='ungraded' href='?assignment=$slug&grader=all&limit=12'>dozen</a>";

@@ -14,17 +14,8 @@ foreach(fullRoster() as $id=>$details) {
 
 
     $bits = FALSE;
-    $overall = cumulative_status($id, $bits);
-    //var_dump($details);
-    //var_dump($overall);
-    $ep = 0; $fp = 0; $mp = 0;
-    foreach($overall as $grp=>$scores) {
-        $ep += $scores['weight'] * $scores['earned'];
-        $fp += $scores['weight'] * $scores['future'];
-        $mp += $scores['weight'] * $scores['missed'];
-    }
-    $final = $ep + $mp > 0 ? 100*$ep / ($ep + $mp) : '';
-    $bar =  svg_progress_bar($ep, $fp, $mp);
+    $final = 0;
+    $overall = cumulative_status($id, $bits, $final);
 
     if (!$header_shown) {
         echo "compid";
@@ -54,7 +45,10 @@ foreach(fullRoster() as $id=>$details) {
     foreach($overall as $grp=>$scores)
         foreach($bits as $slug=>$data)
             if ($data['group'] == $grp)
-                echo ",".$data[".score"];
+                if (!array_key_exists('.score', $data))
+                    echo ",";
+                else
+                    echo ",".$data[".score"];
     echo "\n";
 }
 ?>﻿
