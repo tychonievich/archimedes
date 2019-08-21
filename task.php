@@ -394,7 +394,7 @@ if (array_key_exists('no-regrade', $metadata) && array_key_exists($details['grou
 // time category
 $status = ($now < $open) ? 'is not yet open' 
         :( ($now < $due) ? 'is due ' . prettyTime($due)
-        :( ($now < $close) ? 'was due '.prettyTime($due).'; you may submit fixes until ' . prettyTime($close) 
+        :( ($now < $close) ? 'was due '.prettyTime($due)
         :( 'has closed')));
 // time category css class
 $class = ((!$due || $open > $now) ? "pending" : ($due > $now ? "open" : ($close > $now ? "late" : "closed")));
@@ -489,10 +489,23 @@ if ($submittable) {
         echo rosterEntry($user)['name'];
         echo " ($user)";
     }
-    if ($class == 'late')
-        echo ", though it is now late (see the course syllabus for details on what that means)";
+    if ($class == 'late') {
+	if (array_key_exists('late-policy', $details)) {
+	    $late_days = (time() - assignmentTime('due', $details) + 60) / (60 * 60 * 24);
+	    $late_days = floor($late_days);
+	    $late_days_p1 = $late_days + 1;
+	    $late_policy = $details['late-policy'];
+	    if ($late_days >= count($late_policy)) {
+		$late_days = count($late_policy) - 1;
+	    }
+	    $penalty = $late_policy[$late_days];
+	    $penalty_percent = floor($penalty * 100.0);
+	    echo ", though it is now late (estimated $penalty_percent% credit for $late_days_p1 day late submission)";
+	} else {
+	    echo ", though it is now late (see the course syllabus for what that means)";
+	}
+    }
     echo ":</p><center><input type='file' multiple='multiple' name='submission[]'/><input type='submit' name='upload' value='Upload file(s)'/></center></form>";
-    
 }
 
 

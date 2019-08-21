@@ -768,6 +768,24 @@ function asgn_details($student, $slug) {
         if ($t > $sentin) $sentin = $t;
     }
     $details['submitted'] = $sentin;
+    $late_days = ($sentin - assignmentTime('due', $details)) / (60 * 60 * 24);
+    $details['submitted-late-days'] = $late_days;
+    if ($late_days > -1 && array_key_exists('late-policy', $details)) {
+	$late_policy = $details['late-policy'];
+	$late_days = floor($late_days);
+	$late_days_p1 = $late_days + 1;
+	if ($late_days >= count($late_policy)) {
+	    $late_days = count($late_policy) - 1;
+	}
+	$details['policy-late-penalty'] = $late_policy[$late_days];
+	if (array_key_exists('grade', $details)) {
+	    $details['grade']['.mult'] = array(
+		'kind' => 'percentage',
+		'ratio' => $details['policy-late-penalty'],
+		'comments' => "$late_days_p1 days late",
+	    );
+	}
+    }
 
     // add download links for current submissions
     $files = array();
