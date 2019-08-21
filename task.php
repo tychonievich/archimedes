@@ -444,7 +444,7 @@ echo '<div class="submissions">';
 if ($submitted) {
     if (array_key_exists('single-file', $details) && $details['single-file'] &&
         array_key_exists('.latest', $details)) {
-        $files = $details['.files']
+        $files = $details['.files'];
         echo "<p>Current submission: ";
         echo file_download_link(basename($details['.latest']), $files[$details['.latest']]);
         $feedback_count = 0;
