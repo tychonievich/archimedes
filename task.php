@@ -405,20 +405,26 @@ echo "<h1>$slug – ";
 if (array_key_exists('title', $details)) echo $details['title'];
 echo "</h1>";
 
+if (array_key_exists('link_description', $details)) {
+    $link_description = $details['link_description'];
+} else {
+    $link_description = 'Task description';
+}
+
 if (array_key_exists('link', $details))
     if (substr($details['link'],0,2) == '//' || strpos($details['link'], '://') !== FALSE) {
-        echo "<p><a href='$details[link]'>Task description</a>.</p>";
+        echo "<p><a href='$details[link]'>$link_description</a>.</p>";
     } else {
-        echo "<p><a href='$metadata[writeup_prefix]$details[link]'>Task description</a>.</p>";
+        echo "<p><a href='$metadata[writeup_prefix]$details[link]'>$link_description</a>.</p>";
     }
 else if (array_key_exists('writeup', $details))
-    echo "<p><a href='$metadata[writeup_prefix]$details[writeup]'>Task description</a>.</p>";
+    echo "<p><a href='$metadata[writeup_prefix]$details[writeup]'>$link_description</a>.</p>";
 else if (array_key_exists('title', $details)) {
     echo "<p><a href='$metadata[writeup_prefix]";
     echo strtolower($slug);
     echo "-";
     echo strtolower($details['title']);
-    echo ".html'>Task description</a>.</p>";
+    echo ".html'>$link_description</a>.</p>";
 }
 echo "<p>Return to <a href='index.php$end'>Assignments list</a> or <a href='$metadata[url]'>main course page</a>.</p>";
 
