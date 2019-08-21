@@ -934,7 +934,7 @@ function cumulative_status($student, &$progress=False, &$projected_score=False) 
         }
         
         // record submission
-        $earned = score_of_task($details['grade']);
+        $earned = score_of_task($details);
         $details['.score'] = $earned;
         $ans[$details['group']]['past'][] = array('slug'=>$slug, 'got'=>$earned*$details['weight'], 'of'=>$details['weight']);
         $gcode[] = 'graded';
@@ -1026,9 +1026,21 @@ function cumulative_status($student, &$progress=False, &$projected_score=False) 
 
  */
 
-function score_of_task($gradeobj) {
+function score_of_task($details) {
+    $gradeobj = $details['grade'];
     if (!$gradeobj || !array_key_exists('kind', $gradeobj)) return NAN;
-    if ($gradeobj['kind'] == 'percentage') return $gradeobj['ratio'];
+    if ($gradeobj['kind'] == 'percentage') {
+	$score = $gradeobj['ratio'];
+	if (array_key_exists('.mult', $gradeobj)) {
+	    // (with multiplier)
+	    $score *= $gradeobj['.mult']['ratio'];
+	}
+	if (array_key_exists('.adjustment', $gradeobj)) {
+	    // (with multiplier)
+	    $score *= $gradeobj['.adjustment']['mult'];
+	}
+	return $score;
+    }
 
     // correctness
     $score = $gradeobj['auto'];
