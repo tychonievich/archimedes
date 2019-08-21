@@ -204,14 +204,15 @@ function updateRosterSpreadsheet($uploadrecord, $remove=False, $keepWaiters=True
     $reader = new SpreadsheetReader($uploadrecord['tmp_name'], $uploadrecord['name'], $uploadrecord['type']);
     foreach($reader->Sheets() as $idx => $name) {
         $reader->ChangeSheet($idx);
-        
         // for some strange reason, Collab exports a roster with several sub-sheets inside each sheet.
         // each has a single title row with just one element, a blank row, and then the header and contents
         // since spreadsheet-reader skips empty lines in xlsx, we look for <= 1
         $blank = true;
-        $header = array();
+	$header = array();
 
-        foreach ($reader as $row) {
+	$reader->rewind();
+
+	foreach ($reader as $row) {
             if (count($row) <= 1) { $blank = true; }
             else if ($blank) {
                 $header = array();
