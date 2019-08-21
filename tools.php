@@ -18,6 +18,7 @@ if (!array_key_exists('Grading group', $metadata)) $metadata['Grading group'] = 
 /// The following array grants certain users access to the class even if you upload an empty roster or otherwise mess up the course setup. Feel free to add yourself to the set, but remove those it has now at your own risk.
 $superusers = array(
     'lat7h'=>array('name'=>'Luther Tychonievich', 'role'=>'Admin'),
+    'cr4bd'=>array('name'=>'Charles Reiss', 'role'=>'Admin'),
     'no TA'=>array('name'=>'no TA assigned', 'role'=>'Teaching Assistant'),
     'mst3k'=>array('name'=>'Mystery Theater', 'role'=>'Student', 'grader'=>'no TA'),
 );
