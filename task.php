@@ -447,7 +447,7 @@ echo '</div>';
 
 
 // display feedback
-if ((($close < $now) || ($isstaff && $isself))
+if ((($due < $now) || ($isstaff && $isself))
 && array_key_exists('grade', $details)
 && !array_key_exists('.ext-req', $details)) {
     grader_fb($details);
