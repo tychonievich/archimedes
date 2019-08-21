@@ -791,12 +791,17 @@ function asgn_details($student, $slug) {
 
     // add download links for current submissions
     $files = array();
+    $feedback_files = array()
     foreach(glob("uploads/$slug/$student/*") as $path) {
         $files[basename($path)] = $path;
+        if (array_key_exists('feedback-files', $details)) {
+            foreach($details['feedback-files'] as $pattern) {
+                if (fnmatch($pattern, basename($path), FNM_PERIOD)) {
+                    $feedback_files[basename($path)] = $path;
+                }
+            }
+        }
     }
-
-    if (file_exists("uploads/$slug/$student/.latest"))
-        $details['.latest'] = file_get_contents("uploads/$slug/$student/.latest");
 
     if (array_key_exists('extends', $details)) {
         foreach($details['extends'] as $slug2) {
@@ -810,6 +815,13 @@ function asgn_details($student, $slug) {
     natcasesort($files);
     if (count($files) > 0)
         $details['.files'] = $files;
+
+    if (count($feedback_files) > 0)
+        $details['.feedback-files'] = $feedback_files;
+
+    if (file_exists("uploads/$slug/$student/.latest")) {
+        $details['.latest'] = file_get_contents("uploads/$slug/$student/.latest");
+    }
     
     // add lists of partners
     $partners = array();

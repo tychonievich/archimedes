@@ -442,13 +442,39 @@ function file_download_link($name, $path) {
 // display submission status
 echo '<div class="submissions">';
 if ($submitted) {
-    echo "Your files (<a href='view.php?file=$slug/$user$ext'>view all</a>) (<a href='download.php?file=$slug/$user$ext'>download all as .zip</a>):<ul class='filelist'>";
-    foreach($details['.files'] as $name=>$path) {
-        echo "<li>";
-        echo file_download_link($name, $path);
-        echo "</li>";
+    if (array_key_exists('single-file', $details) && $details['single-file'] &&
+        array_key_exists('.latest', $details)) {
+        echo "<p>Current submission: ";
+        echo file_download_link($name, $details['.latest']);
+        $feedback_count = 0;
+        if (array_key_exists('.feedback-files', $details)) {
+            $feedback_count = count($details['.feedback-files']);
+            echo "<p>Grader outputs: <ul class='filelist'>";
+            foreach($details['.feedback-files'] as $name=>$path) {
+                echo "<li>";
+                echo file_download_link($name, $path);
+                echo "</li>";
+            }
+        }
+        if (count($details['.files']) - $feedback_count > 1) {
+            echo "<p>Older submissions: <ul class='filelist'>";
+            foreach($details['.files'] as $name=>$path) {
+                if (array_key_exists($details['.feedback_files'], $name)) continue;
+                echo "<li>";
+                echo file_download_link($name, $path);
+                echo "</li>";
+            }
+            echo "</ul>";
+        }
+    } else {
+        echo "Your files (<a href='view.php?file=$slug/$user$ext'>view all</a>) (<a href='download.php?file=$slug/$user$ext'>download all as .zip</a>):<ul class='filelist'>";
+        foreach($details['.files'] as $name=>$path) {
+            echo "<li>";
+            echo file_download_link($name, $path);
+            echo "</li>";
+        }
+        echo '</ul>';
     }
-    echo '</ul>';
 } else if (array_key_exists('files', $details)) {
     echo 'You have not yet submitted this assignment.';
 } else {
