@@ -820,7 +820,9 @@ function asgn_details($student, $slug) {
         $details['.feedback-files'] = $feedback_files;
 
     if (file_exists("uploads/$slug/$student/.latest")) {
-        $details['.latest'] = file_get_contents("uploads/$slug/$student/.latest");
+        $latest_lines = explode("\n",trim(file_get_contents("uploads/$slug/$student/.latest")));
+        $details['.latest'] = $latest_lines[0];
+        $details['.latest-subdir'] = $latest_lines[1];
     }
     
     // add lists of partners

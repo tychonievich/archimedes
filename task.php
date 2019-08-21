@@ -104,7 +104,7 @@ function accept_submission() {
         if (file_exists($linkdir . $name)) {
             rename($linkdir . $name, $linkdir . '.backup-' . $name);
         }
-        file_put($linkdir . '.latest', $fname);
+        file_put($linkdir . '.latest', $fname . "\n" . $now);
         if (!link($realdir . $name, $linkdir . $name)) {
             user_error_msg("Received <tt>".htmlspecialchars($name)."</tt> but failed to put it into the right location to be tested (not sure why; please report this to your professor).");
             continue;
@@ -202,7 +202,7 @@ function roll_back() {
             if (file_exists("$dname/.autograde")) unlink("$dname/.autograde");
             if (file_exists("$dname/.grade")) unlink("$dname/.grade");
             link($_POST['make_live'], "$dname/$fname");
-            file_put("$dname/.latest", $fname);
+            file_put("$dname/.latest", $fname . "\n" .dirname($_POST['make_live']));
             ensure_file("meta/queued/$slug-$user", basename($dname));
             user_success_msg("roll-back completed: <tt>$dname/$fname</tt> now aliases <tt>$_POST[make_live]</tt>, any previous feedback has been removed, and the autograder has been queued to review <tt>meta/queued/$slug-$user</tt>.");
         }
@@ -444,8 +444,9 @@ echo '<div class="submissions">';
 if ($submitted) {
     if (array_key_exists('single-file', $details) && $details['single-file'] &&
         array_key_exists('.latest', $details)) {
+        $files = $details['.files']
         echo "<p>Current submission: ";
-        echo file_download_link($name, $details['.latest']);
+        echo file_download_link(basename($details['.latest']), $files[$details['.latest']]);
         $feedback_count = 0;
         if (array_key_exists('.feedback-files', $details)) {
             $feedback_count = count($details['.feedback-files']);
@@ -456,9 +457,9 @@ if ($submitted) {
                 echo "</li>";
             }
         }
-        if (count($details['.files']) - $feedback_count > 1) {
+        if (count($files) - $feedback_count > 1) {
             echo "<p>Older submissions: <ul class='filelist'>";
-            foreach($details['.files'] as $name=>$path) {
+            foreach($files as $name=>$path) {
                 if (array_key_exists($details['.feedback_files'], $name)) continue;
                 echo "<li>";
                 echo file_download_link($name, $path);
