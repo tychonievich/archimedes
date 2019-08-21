@@ -791,7 +791,7 @@ function asgn_details($student, $slug) {
 
     // add download links for current submissions
     $files = array();
-    $feedback_files = array()
+    $feedback_files = array();
     foreach(glob("uploads/$slug/$student/*") as $path) {
         $files[basename($path)] = $path;
         if (array_key_exists('feedback-files', $details)) {
