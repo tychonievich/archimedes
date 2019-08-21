@@ -794,6 +794,10 @@ function asgn_details($student, $slug) {
     foreach(glob("uploads/$slug/$student/*") as $path) {
         $files[basename($path)] = $path;
     }
+
+    if (file_exists("uploads/$slug/$student/.latest"))
+        $details['.latest'] = file_get_contents("uploads/$slug/$student/.latest");
+
     if (array_key_exists('extends', $details)) {
         foreach($details['extends'] as $slug2) {
             foreach(glob("uploads/$slug2/$student/*") as $path) {

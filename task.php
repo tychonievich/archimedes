@@ -104,6 +104,7 @@ function accept_submission() {
         if (file_exists($linkdir . $name)) {
             rename($linkdir . $name, $linkdir . '.backup-' . $name);
         }
+        file_put($linkdir . '.latest', $fname);
         if (!link($realdir . $name, $linkdir . $name)) {
             user_error_msg("Received <tt>".htmlspecialchars($name)."</tt> but failed to put it into the right location to be tested (not sure why; please report this to your professor).");
             continue;
@@ -201,6 +202,7 @@ function roll_back() {
             if (file_exists("$dname/.autograde")) unlink("$dname/.autograde");
             if (file_exists("$dname/.grade")) unlink("$dname/.grade");
             link($_POST['make_live'], "$dname/$fname");
+            file_put("$dname/.latest", $fname);
             ensure_file("meta/queued/$slug-$user", basename($dname));
             user_success_msg("roll-back completed: <tt>$dname/$fname</tt> now aliases <tt>$_POST[make_live]</tt>, any previous feedback has been removed, and the autograder has been queued to review <tt>meta/queued/$slug-$user</tt>.");
         }
