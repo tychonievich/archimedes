@@ -445,8 +445,9 @@ if ($submitted) {
     if (array_key_exists('single-file', $details) && $details['single-file'] &&
         array_key_exists('.latest', $details)) {
         $files = $details['.files'];
-        echo "<p>Current submission: ";
+        echo "<p>Current submission: <ul class='filelist'><li>";
         echo file_download_link(basename($details['.latest']), $files[$details['.latest']]);
+        echo "</li></ul>";
         $feedback_count = 0;
         if (array_key_exists('.feedback-files', $details)) {
             $feedback_count = count($details['.feedback-files']);
@@ -461,6 +462,7 @@ if ($submitted) {
             echo "<p>Older submissions: <ul class='filelist'>";
             foreach($files as $name=>$path) {
                 if (array_key_exists($details['.feedback_files'], $name)) continue;
+                if ($name == basename($details['.latest'])) continue;
                 echo "<li>";
                 echo file_download_link($name, $path);
                 echo "</li>";
