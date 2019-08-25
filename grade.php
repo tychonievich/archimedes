@@ -16,16 +16,6 @@ if (array_key_exists('addgrade', $_REQUEST)) {
     if (!array_key_exists('slug', $grade) || !array_key_exists('student', $grade)) die ("grade payload missing required keys");
     $grade['timestamp'] = time();
 
-    $details = asgn_details($grade['student'], $grade['slug']);
-    # preserve hidden information
-    if (array_key_exists('grade', $details)) {
-        foreach ($details['grade'] as $k => $v) {
-            if (!array_key_exists($k, $details)) {
-                $grade[$k] = $v;
-            }
-        }
-    }
-
     // log regrade chatter
     $reqfile = "meta/requests/regrade/$grade[slug]-$grade[student]";
     if (array_key_exists('regrade', $grade) && file_exists($reqfile)) {
@@ -49,6 +39,16 @@ if (array_key_exists('addgrade', $_REQUEST)) {
         );
         unset($grade['regrade']);
         file_put($chatfile, json_encode($chatter)) || die('failed to record decision (may be server permission error?)');
+    }
+    
+    $details = asgn_details($grade['student'], $grade['slug']);
+    # preserve hidden information
+    if (array_key_exists('grade', $details)) {
+        foreach ($details['grade'] as $k => $v) {
+            if (!array_key_exists($k, $grade)) {
+                $grade[$k] = $v;
+            }
+        }
     }
     
     $rub = rubricOf($grade['slug']);
