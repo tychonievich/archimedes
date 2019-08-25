@@ -273,6 +273,11 @@ function show_grade($gradeobj) {
 	$aw = array_key_exists('auto-weight', $gradeobj) ? $gradeobj['auto-weight'] : 0.5;
 	$score = $human/$human_denom*(1-$aw) + $score*$aw;
     }
+    if (array_key_exists('.sub', $gradeobj)) {
+        // (with subtraction)
+        _show_grade_obj_row($ans, $gradeobj['.sub']['portion'], $gradeobj['.sub']['comments'], true, '- ');
+        $score -= $gradeobj['.sub']['portion'];
+    }
     if (array_key_exists('.mult', $gradeobj)) {
         // (with multiplier)
         _show_grade_obj_row($ans, $gradeobj['.mult']['ratio'], $gradeobj['.mult']['comments'], true, '× ');
@@ -438,6 +443,12 @@ function file_download_link($name, $path) {
     return "<a title='$name' href='download.php?file=$dl'>$name</a> $mtime";
 }
 
+function file_view_link($name, $path) {
+    $dl = rawurlencode(explode('/',$path,2)[1]);
+    $mtime = prettyTime(filemtime($path));
+    return "<a title='view $name' href='view.php?file=$dl'>(view)</a>";
+}
+
 
 // display submission status
 echo '<div class="submissions">';
@@ -454,7 +465,7 @@ if ($submitted) {
             echo "<p>Grader outputs: <ul class='filelist'>";
             foreach($details['.feedback-files'] as $name=>$path) {
                 echo "<li>";
-                echo file_download_link($name, $path);
+                echo file_download_link($name, $path) . " " . file_view_link($name, $path);
                 echo "</li>";
             }
         }

@@ -780,11 +780,18 @@ function asgn_details($student, $slug) {
             }
             $details['policy-late-penalty'] = $late_policy[$late_days];
             if (array_key_exists('grade', $details)) {
-                $details['grade']['.mult'] = array(
-                    'kind' => 'percentage',
-                    'ratio' => $details['policy-late-penalty'],
-                    'comments' => "$late_days_p1 days late",
-                );
+                if (array_key_exists('.adjustment', $details['grade'])) {
+                    $details['grade']['.adjustment'] = array(
+                        'kind' => 'percentage',
+                        'ratio' => $details['policy-late-penalty'] * $details['grade']['.adjustment']['ratio'],
+                        'comments' => $details['grade']['.adjustment']['comments'] . " and $late_days_p1 days late",
+                    );
+                } else {
+                    $details['grade']['.adjustment'] = array(
+                        'kind' => 'percentage',
+                        'ratio' => $details['policy-late-penalty'],
+                        'comments' => "$late_days_p1 days late",
+                    );
             }
         }
     }
