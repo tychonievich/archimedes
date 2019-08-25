@@ -792,6 +792,7 @@ function asgn_details($student, $slug) {
                         'ratio' => $details['policy-late-penalty'],
                         'comments' => "$late_days_p1 days late",
                     );
+                }
             }
         }
     }
@@ -1096,6 +1097,10 @@ function score_of_task($details) {
     // combined
     $aw = array_key_exists('auto-weight', $gradeobj) ? $gradeobj['auto-weight'] : 0.5;
     $score = ($human_denom > 0 ? $human/$human_denom*(1-$aw) : 0) + $score*$aw;
+    if (array_key_exists('.sub', $gradeobj)) {
+        // (with subtraction)
+        $score -= $gradeobj['.sub']['portion'];
+    }
     if (array_key_exists('.mult', $gradeobj)) {
         // (with multiplier)
         $score *= $gradeobj['.mult']['ratio'];
