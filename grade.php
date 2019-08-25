@@ -16,6 +16,16 @@ if (array_key_exists('addgrade', $_REQUEST)) {
     if (!array_key_exists('slug', $grade) || !array_key_exists('student', $grade)) die ("grade payload missing required keys");
     $grade['timestamp'] = time();
 
+    $details = asgn_details($grade['student'], $grade['slug']);
+    # preserve hidden information
+    if (array_key_exists('grade', $details)) {
+        foreach ($details['grade'] as $k => $v) {
+            if (!array_key_exists($k, $details)) {
+                $grade[$k] = $v;
+            }
+        }
+    }
+
     // log regrade chatter
     $reqfile = "meta/requests/regrade/$grade[slug]-$grade[student]";
     if (array_key_exists('regrade', $grade) && file_exists($reqfile)) {
@@ -48,7 +58,6 @@ if (array_key_exists('addgrade', $_REQUEST)) {
         $grade['auto-weight'] = $rub['auto-weight'];
         $grade['late-penalty'] = $rub['late-penalty'];
         // and computed values
-        $details = asgn_details($grade['student'], $grade['slug']);
         if (array_key_exists('ontime', $details)) {
             $grade['auto-late'] = $details['autograde']['correctness'];
             $grade['auto'] = $details['ontime']['correctness'];
@@ -115,7 +124,28 @@ function percent_tree($details) {
     $text = 'correct';
     $ratio = array_key_exists('grade', $details) ? $details['grade']['ratio']*100 : '';
     $comment = array_key_exists('grade', $details) ? htmlspecialchars($details['grade']['comments']) : '';
-    return percent_tag($id, $text, $ratio, $comment);
+    $innertag = percent_tag($id, $text, $ratio, $comment);
+    $hasmult = array_key_exists('grade', $details) && array_key_exists('.mult',$details['grade']);
+    $mult = percent_tag(
+        "$id|mult", 
+        "grade multiplier (e.g., for hard-coding, other prohibited activity)",
+        $hasmult ? $details['grade']['.mult']['ratio']*100 : '',
+        $hasmult ? htmlspecialchars($details['grade']['.mult']['comments']) : ''
+    );
+    $hassub = array_key_exists('grade', $details) && array_key_exists('.sub',$details['grade']);
+    $sub = percent_tag(
+        "$id|sub", 
+        "grade subtraction",
+        $hasmult ? $details['grade']['.sub']['portion']*100 : '',
+        $hasmult ? htmlspecialchars($details['grade']['.sub']['comments']) : ''
+    );
+    return "
+        <div class='percentage-outer' id='$id|outer'>
+            $innertag
+            $sub
+            $mult
+        </div>
+    ";
 }
 
 function hybrid_tree($details) {
@@ -374,7 +404,8 @@ function _grade(id) {
         element.classList.remove('error');
         return val;
     }
-    
+
+    var ans = {};
     if (root.classList.contains('percentage')) {
         var correct = document.getElementById(id+'|percent').value;
         var comment = document.getElementById(id+'|comment').value;
@@ -382,12 +413,12 @@ function _grade(id) {
         correct = check_percent(correct, comment, root);
         root.classList.remove('error');
 
-        return {"kind":"percentage"
+        ans = {"kind":"percentage"
                ,"ratio":correct/100
                ,"comments":comment
                };
     } else if (root.classList.contains('hybrid')) {
-        var ans = {kind:'hybrid', human:[]};
+        ans = {kind:'hybrid', human:[]};
 
         document.getElementById(id).querySelectorAll('input[type="radio"]').forEach(function(x){
             var key = x.parentElement.parentElement.lastElementChild.innerHTML;
@@ -408,21 +439,28 @@ function _grade(id) {
 
         var comment = document.getElementById(id+'|comment').value;
         if (comment.length > 0) ans['comments'] = comment;
-
-        var mult_correct = document.getElementById(id+'|mult|percent').value;
-        var mult_comment = document.getElementById(id+'|mult|comment').value;
-        if (mult_correct.length > 0) {
-            mult_correct = check_percent(mult_correct, mult_comment, document.getElementById(id+'|mult'));
-            ans['.mult'] = {"kind":"percentage"
-                           ,"ratio":mult_correct/100
-                           ,"comments":mult_comment
-                           };
-        }
-        
-        return ans;
     } else {
         alert('Grader script error: unexpected rubric kind '+JSON.stringify(root.classList));
     }
+    var mult_correct = document.getElementById(id+'|mult|percent').value;
+    var mult_comment = document.getElementById(id+'|mult|comment').value;
+    if (mult_correct.length > 0) {
+        mult_correct = check_percent(mult_correct, mult_comment, document.getElementById(id+'|mult'));
+        ans['.mult'] = {"kind":"percentage"
+                       ,"ratio":mult_correct/100
+                       ,"comments":mult_comment
+                       };
+    }
+    var sub_correct = document.getElementById(id+'|sub|percent').value;
+    var sub_comment = document.getElementById(id+'|sub|comment').value;
+    if (sub_correct.length > 0) {
+        sub_correct = check_percent(sub_correct, sub_comment, document.getElementById(id+'|sub'));
+        ans['.sub'] = {"kind":"percentage"
+                       ,"portion":mult_correct/100
+                       ,"comments":mult_comment
+                       };
+    }
+    return ans;
 }
 
 /** Callback for the "submit grade" button: tell the server, hide the student, and ask for new comments */
