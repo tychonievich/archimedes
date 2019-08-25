@@ -492,7 +492,6 @@ if ($submitted) {
 } else if (array_key_exists('files', $details)) {
     echo 'You have not yet submitted this assignment.';
 } else {
-    echo "<p>Online submissions are not enabled for this assignment.</p>";
 }
 echo '</div>';
 
