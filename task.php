@@ -468,11 +468,12 @@ if ($submitted) {
                 echo file_download_link($name, $path) . " " . file_view_link($name, $path);
                 echo "</li>";
             }
+            echo "</ul>";
         }
         if (count($files) - $feedback_count > 1) {
             echo "<p>Older submissions: <ul class='filelist'>";
             foreach($files as $name=>$path) {
-                if (array_key_exists($details['.feedback_files'], $name)) continue;
+                if (in_array($details['.feedback_files'], $name)) continue;
                 if ($name == basename($details['.latest'])) continue;
                 echo "<li>";
                 echo file_download_link($name, $path);
