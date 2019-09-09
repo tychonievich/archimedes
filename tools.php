@@ -759,11 +759,13 @@ function asgn_details($student, $slug) {
     // add submission time
     $sentin = 0;
     foreach(glob("uploads/$slug/$student/*") as $path) {
+        $feedback = 0;
         if (array_key_exists('feedback-files', $details)) {
             foreach($details['feedback-files'] as $pattern) {
-                if (fnmatch($pattern, basename($path), FNM_PERIOD)) continue;
+                if (fnmatch($pattern, basename($path), FNM_PERIOD)) $feedback = 1;
             }
         }
+        if ($feedback) continue;
         $t = filemtime($path);
         if ($t > $sentin) $sentin = $t;
     }
