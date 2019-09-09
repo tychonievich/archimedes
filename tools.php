@@ -785,14 +785,12 @@ function asgn_details($student, $slug) {
                 if (array_key_exists('.adjustment', $details['grade'])) {
                     $details['grade']['.adjustment'] = array(
                         'kind' => 'percentage',
-                        'ratio' => $details['policy-late-penalty'] * $details['grade']['.adjustment']['ratio'],
-                        'mult' => $details['policy-late-penalty'] * $details['grade']['.adjustment']['ratio'], # FIXME: duplicated
+                        'mult' => $details['policy-late-penalty'] * $details['grade']['.adjustment']['mult'], # FIXME: duplicated
                         'comments' => $details['grade']['.adjustment']['comments'] . " and $late_days_p1 days late",
                     );
                 } else {
                     $details['grade']['.adjustment'] = array(
                         'kind' => 'percentage',
-                        'ratio' => $details['policy-late-penalty'],
                         'mult' => $details['policy-late-penalty'], # FIXME: duplicated?
                         'comments' => "$late_days_p1 days late",
                     );
