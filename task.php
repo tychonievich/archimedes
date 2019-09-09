@@ -473,7 +473,7 @@ if ($submitted) {
         if (count($files) - $feedback_count > 1) {
             echo "<p>Older submissions: <ul class='filelist'>";
             foreach($files as $name=>$path) {
-                if (array_key_exists($name, $details['.feedback_files'])) continue;
+                if (array_key_exists($name, $details['.feedback-files'])) continue;
                 if ($name == basename($details['.latest'])) continue;
                 echo "<li>";
                 echo file_download_link($name, $path);
