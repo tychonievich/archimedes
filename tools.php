@@ -793,6 +793,7 @@ function asgn_details($student, $slug) {
                     $details['grade']['.adjustment'] = array(
                         'kind' => 'percentage',
                         'ratio' => $details['policy-late-penalty'],
+                        'mult' => $details['policy-late-penalty'], # FIXME: duplicated?
                         'comments' => "$late_days_p1 days late",
                     );
                 }
