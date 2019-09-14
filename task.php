@@ -391,7 +391,6 @@ $show_cases =  $due < $now
     && !array_key_exists('.ext-req', $details);
 $extendable = ($now < $due || !$submitted) 
     && array_key_exists('files', $details) 
-    && !array_key_exists('.files', $details) 
     && !(array_key_exists('no-extension', $metadata) && array_key_exists($details['group'], $metadata['no-extension']));
 
 $regradable = TRUE;
