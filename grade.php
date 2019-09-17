@@ -136,8 +136,8 @@ function percent_tree($details) {
     $sub = percent_tag(
         "$id|sub", 
         "grade subtraction",
-        $hasmult ? $details['grade']['.sub']['portion']*100 : '',
-        $hasmult ? htmlspecialchars($details['grade']['.sub']['comments']) : ''
+        $hassub ? $details['grade']['.sub']['portion']*100 : '',
+        $hassub ? htmlspecialchars($details['grade']['.sub']['comments']) : ''
     );
     return "
         <div class='percentage-outer' id='$id|outer'>
