@@ -413,7 +413,10 @@ if (array_key_exists('link_description', $details)) {
     $link_description = 'Task description';
 }
 
-if (array_key_exists('link', $details))
+if (array_key_exists('describe_html', $details)) {
+    $html = $details['describe_html'];
+    echo "<p>$html</p>";
+} else if (array_key_exists('link', $details))
     if (substr($details['link'],0,2) == '//' || strpos($details['link'], '://') !== FALSE) {
         echo "<p><a href='$details[link]'>$link_description</a>.</p>";
     } else {
