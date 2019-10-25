@@ -759,11 +759,13 @@ function asgn_details($student, $slug) {
     // add submission time
     $sentin = 0;
     foreach(glob("uploads/$slug/$student/*") as $path) {
+        $feedback = 0;
         if (array_key_exists('feedback-files', $details)) {
             foreach($details['feedback-files'] as $pattern) {
-                if (fnmatch($pattern, basename($path), FNM_PERIOD)) continue;
+                if (fnmatch($pattern, basename($path), FNM_PERIOD)) $feedback = 1;
             }
         }
+        if ($feedback) continue;
         $t = filemtime($path);
         if ($t > $sentin) $sentin = $t;
     }
@@ -780,11 +782,19 @@ function asgn_details($student, $slug) {
             }
             $details['policy-late-penalty'] = $late_policy[$late_days];
             if (array_key_exists('grade', $details)) {
-                $details['grade']['.mult'] = array(
-                    'kind' => 'percentage',
-                    'ratio' => $details['policy-late-penalty'],
-                    'comments' => "$late_days_p1 days late",
-                );
+                if (array_key_exists('.adjustment', $details['grade'])) {
+                    $details['grade']['.adjustment'] = array(
+                        'kind' => 'percentage',
+                        'mult' => $details['policy-late-penalty'] * $details['grade']['.adjustment']['mult'], # FIXME: duplicated
+                        'comments' => $details['grade']['.adjustment']['comments'] . " and $late_days_p1 days late",
+                    );
+                } else {
+                    $details['grade']['.adjustment'] = array(
+                        'kind' => 'percentage',
+                        'mult' => $details['policy-late-penalty'], # FIXME: duplicated?
+                        'comments' => "$late_days_p1 days late",
+                    );
+                }
             }
         }
     }
@@ -1089,6 +1099,10 @@ function score_of_task($details) {
     // combined
     $aw = array_key_exists('auto-weight', $gradeobj) ? $gradeobj['auto-weight'] : 0.5;
     $score = ($human_denom > 0 ? $human/$human_denom*(1-$aw) : 0) + $score*$aw;
+    if (array_key_exists('.sub', $gradeobj)) {
+        // (with subtraction)
+        $score -= $gradeobj['.sub']['portion'];
+    }
     if (array_key_exists('.mult', $gradeobj)) {
         // (with multiplier)
         $score *= $gradeobj['.mult']['ratio'];

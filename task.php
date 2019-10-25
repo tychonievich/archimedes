@@ -202,7 +202,8 @@ function roll_back() {
             if (file_exists("$dname/.autograde")) unlink("$dname/.autograde");
             if (file_exists("$dname/.grade")) unlink("$dname/.grade");
             link($_POST['make_live'], "$dname/$fname");
-            file_put("$dname/.latest", $fname . "\n" .dirname($_POST['make_live']));
+            $stamp = substr(basename(dirname($_POST['make_live'])), 1);
+            file_put("$dname/.latest", $fname . "\n" .$stamp);
             ensure_file("meta/queued/$slug-$user", basename($dname));
             user_success_msg("roll-back completed: <tt>$dname/$fname</tt> now aliases <tt>$_POST[make_live]</tt>, any previous feedback has been removed, and the autograder has been queued to review <tt>meta/queued/$slug-$user</tt>.");
         }
@@ -272,6 +273,11 @@ function show_grade($gradeobj) {
     } else {
 	$aw = array_key_exists('auto-weight', $gradeobj) ? $gradeobj['auto-weight'] : 0.5;
 	$score = $human/$human_denom*(1-$aw) + $score*$aw;
+    }
+    if (array_key_exists('.sub', $gradeobj)) {
+        // (with subtraction)
+        _show_grade_obj_row($ans, $gradeobj['.sub']['portion'], $gradeobj['.sub']['comments'], true, '- ');
+        $score -= $gradeobj['.sub']['portion'];
     }
     if (array_key_exists('.mult', $gradeobj)) {
         // (with multiplier)
@@ -386,7 +392,6 @@ $show_cases =  $due < $now
     && !array_key_exists('.ext-req', $details);
 $extendable = ($now < $due || !$submitted) 
     && array_key_exists('files', $details) 
-    && !array_key_exists('.files', $details) 
     && !(array_key_exists('no-extension', $metadata) && array_key_exists($details['group'], $metadata['no-extension']));
 
 $regradable = TRUE;
@@ -441,6 +446,12 @@ function file_download_link($name, $path) {
     return "<a title='$name' href='download.php?file=$dl'>$name</a> $mtime";
 }
 
+function file_view_link($name, $path) {
+    $dl = rawurlencode(explode('/',$path,2)[1]);
+    $mtime = prettyTime(filemtime($path));
+    return "<a title='view $name' href='view.php?file=$dl'>(view)</a>";
+}
+
 
 // display submission status
 echo '<div class="submissions">';
@@ -457,14 +468,15 @@ if ($submitted) {
             echo "<p>Grader outputs: <ul class='filelist'>";
             foreach($details['.feedback-files'] as $name=>$path) {
                 echo "<li>";
-                echo file_download_link($name, $path);
+                echo file_download_link($name, $path) . " " . file_view_link($name, $path);
                 echo "</li>";
             }
+            echo "</ul>";
         }
         if (count($files) - $feedback_count > 1) {
             echo "<p>Older submissions: <ul class='filelist'>";
             foreach($files as $name=>$path) {
-                if (array_key_exists($details['.feedback_files'], $name)) continue;
+                if (array_key_exists($name, $details['.feedback-files'])) continue;
                 if ($name == basename($details['.latest'])) continue;
                 echo "<li>";
                 echo file_download_link($name, $path);
@@ -484,7 +496,6 @@ if ($submitted) {
 } else if (array_key_exists('files', $details)) {
     echo 'You have not yet submitted this assignment.';
 } else {
-    echo "<p>Online submissions are not enabled for this assignment.</p>";
 }
 echo '</div>';
 
