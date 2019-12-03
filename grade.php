@@ -45,6 +45,8 @@ if (array_key_exists('addgrade', $_REQUEST)) {
     # preserve hidden information
     if (array_key_exists('grade', $details)) {
         foreach ($details['grade'] as $k => $v) {
+            # FIXME: hack
+            if ($k == '.adjustment') { continue; }
             if (!array_key_exists($k, $grade)) {
                 $grade[$k] = $v;
             }
