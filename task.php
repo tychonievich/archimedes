@@ -326,6 +326,7 @@ function grader_fb($details) {
     echo '</div></div>';
 }
 function testcase_fb($details) {
+    return;
     if (!array_key_exists('details', $details['autograde']))
         return "Test case listing not enabled for $details[slug]; showing preliminary feedback instead.\n".preliminary_fb($details);
     
