@@ -111,7 +111,7 @@ if ($isfaculty && array_key_exists('extension_decision', $_POST)) {
             else if (array_key_exists('late', $_POST) && is_array(json_decode($_POST['late'], true))) 
                 $object['late-policy'] = json_decode($_POST['late'], true);
             $object['close'] = closeTime($object + assignments()[$_POST['extension_assignment']]); // needed to overwrite optional close in assignment itself
-            if ($object['close'] < $object['due']) {
+            if (strtotime($object['close']) < strtotime($object['due'])) {
                 $object['close'] = $object['due'];
             }
             if (!file_put($extendfile, json_encode($object))) preFeedback("Failed to write .extension file");
