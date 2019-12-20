@@ -112,7 +112,7 @@ if ($isfaculty && array_key_exists('extension_decision', $_POST)) {
                 $object['late-policy'] = json_decode($_POST['late'], true);
             $object['close'] = closeTime($object + assignments()[$_POST['extension_assignment']]); // needed to overwrite optional close in assignment itself
             if (date('Y-m-d H:i', $object['close']) < $object['due']) {
-                $object['close'] = $object['due'];
+                $object['close'] = strtotime($object['due']. " America/New_York");
             }
             if (!file_put($extendfile, json_encode($object))) preFeedback("Failed to write .extension file");
             else {
