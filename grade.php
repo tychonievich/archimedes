@@ -571,7 +571,7 @@ function gradeableTree($limit=False) {
                     'ungraded'=>0,
                     'graders'=>array(),
                 );
-                if ($gid != 'no grader' && !$issuperuser)
+                if ($gid != 'no grader' || $issuperuser)
                     $ans[$slug][$status] += 1;
 
                 if (!array_key_exists($gid, $ans[$slug]['graders'])) $ans[$slug]['graders'][$gid] = array(
