@@ -9,7 +9,7 @@ if (!$isstaff) die("page restricted to staff");
 $issuperuser = array_key_exists('supergraders', $metadata) 
     && in_array($user, $metadata['supergraders']);
 
-if (array_key_exists('addgrade', $_REQUEST)) {
+if (array_key_exists('addgrade', $_REQUEST) || array_key_exists('respondtoregrade', $_REQUEST)) {
     // retrieve and validate message
     $grade = json_decode(file_get_contents("php://input"), true);
     if (!$grade) die ("invalid JSON payload received");
@@ -40,55 +40,56 @@ if (array_key_exists('addgrade', $_REQUEST)) {
         unset($grade['regrade']);
         file_put($chatfile, json_encode($chatter)) || die('failed to record decision (may be server permission error?)');
     }
-    
-    $details = asgn_details($grade['student'], $grade['slug']);
-    # preserve hidden information
-    if (array_key_exists('grade', $details)) {
-        foreach ($details['grade'] as $k => $v) {
-            # FIXME: hack
-            if ($k == '.adjustment') { continue; }
-            if (!array_key_exists($k, $grade)) {
-                $grade[$k] = $v;
+    if (array_key_exists('addgrade', $_REQUEST)) {
+        $details = asgn_details($grade['student'], $grade['slug']);
+        # preserve hidden information
+        if (array_key_exists('grade', $details)) {
+            foreach ($details['grade'] as $k => $v) {
+                # FIXME: hack
+                if ($k == '.adjustment') { continue; }
+                if (!array_key_exists($k, $grade)) {
+                    $grade[$k] = $v;
+                }
             }
         }
-    }
-    
-    $rub = rubricOf($grade['slug']);
-    if ($rub['kind'] != $grade['kind']) die("expected '$rub[kind]' (not '$grade[kind]') for $grade[slug]");
-    if ($grade['kind'] == 'hybrid') {
-        // add rubric details
-        $grade['auto-weight'] = $rub['auto-weight'];
-        $grade['late-penalty'] = $rub['late-penalty'];
-        // and computed values
-        if (array_key_exists('ontime', $details)) {
-            $grade['auto-late'] = $details['autograde']['correctness'];
-            $grade['auto'] = $details['ontime']['correctness'];
-        } else if (array_key_exists('autograde', $details)) {
-            $grade['auto'] = $details['autograde']['correctness'];
-        } else {
-            $grade['auto'] = 0;
+        
+        $rub = rubricOf($grade['slug']);
+        if ($rub['kind'] != $grade['kind']) die("expected '$rub[kind]' (not '$grade[kind]') for $grade[slug]");
+        if ($grade['kind'] == 'hybrid') {
+            // add rubric details
+            $grade['auto-weight'] = $rub['auto-weight'];
+            $grade['late-penalty'] = $rub['late-penalty'];
+            // and computed values
+            if (array_key_exists('ontime', $details)) {
+                $grade['auto-late'] = $details['autograde']['correctness'];
+                $grade['auto'] = $details['ontime']['correctness'];
+            } else if (array_key_exists('autograde', $details)) {
+                $grade['auto'] = $details['autograde']['correctness'];
+            } else {
+                $grade['auto'] = 0;
+            }
+            
+            // and weights
+            if (count($grade['human']) != count($rub['human'])) die('wrong number of entries in human grading');
+            foreach($rub['human'] as $i=>$val) {
+                if (!is_array($val)) $val = array('weight'=>1, 'name'=>$val);
+                if ($grade['human'][$i]['name'] != $val['name']) die('rubric has changed');
+                $grade['human'][$i]['weight'] = $val['weight'];
+            }
         }
         
-        // and weights
-        if (count($grade['human']) != count($rub['human'])) die('wrong number of entries in human grading');
-        foreach($rub['human'] as $i=>$val) {
-            if (!is_array($val)) $val = array('weight'=>1, 'name'=>$val);
-            if ($grade['human'][$i]['name'] != $val['name']) die('rubric has changed');
-            $grade['human'][$i]['weight'] = $val['weight'];
+        // post to uploads/assignment/.gradelog and uploads/assignment/student/.grade
+        $payload = json_encode($grade);
+        file_put("uploads/$grade[slug]/$grade[student]/.grade", $payload)  || die('failed to record grade (may be server permission error?)');
+        file_append("users/.graded/$user/$grade[slug]", "$grade[student]\n");
+        if (file_exists("uploads/$grade[slug]/$grade[student]/.partners")) {
+            foreach(explode("\n",file_get_contents("uploads/$grade[slug]/$grade[student]/.partners")) as $pair) {
+                file_put("uploads/$grade[slug]/$pair/.grade", $payload);
+                file_append("users/.graded/$user/$grade[slug]", "$pair\n");
+            }
         }
+        file_append("uploads/$grade[slug]/.gradelog", "$payload\n");
     }
-    
-    // post to uploads/assignment/.gradelog and uploads/assignment/student/.grade
-    $payload = json_encode($grade);
-    file_put("uploads/$grade[slug]/$grade[student]/.grade", $payload)  || die('failed to record grade (may be server permission error?)');
-    file_append("users/.graded/$user/$grade[slug]", "$grade[student]\n");
-    if (file_exists("uploads/$grade[slug]/$grade[student]/.partners")) {
-        foreach(explode("\n",file_get_contents("uploads/$grade[slug]/$grade[student]/.partners")) as $pair) {
-            file_put("uploads/$grade[slug]/$pair/.grade", $payload);
-            file_append("users/.graded/$user/$grade[slug]", "$pair\n");
-        }
-    }
-    file_append("uploads/$grade[slug]/.gradelog", "$payload\n");
 
     // inform invoking method of success
     die(json_encode(array("success"=>True,"slug"=>$grade['slug'],"student"=>$grade['student'])));
@@ -251,6 +252,7 @@ function student_screen($slug, $student, $nof='') {
             $rg[] = "</pre>";
             $rg[] = "<strong>Response:</strong><textarea class='regrade-response' id='$slug|$student|regrade'></textarea>";
         }
+        $rg[] = "<input type='button' value='respond without regrading' onclick='respond_to_regrade(" . json_encode("$slug|$student") . ")'>";
         $rg[] = "</div>";
         if ($keep) $rg = implode('', $rg);
         else $rg = '';
@@ -483,6 +485,26 @@ function grade(id) {
     }
 
     ajax(ans, 'addgrade=1&asuser=<?=$user?>'); // FIX ME: add checking of response code
+    document.getElementById("table|"+id).classList.add('done');
+}
+
+function respond_to_regrade(id) {
+    var ans = {
+        grader:"<?=$user?>", 
+        slug:id.split('|',2)[0], 
+        student:id.split('|',3)[1],
+    }
+    var tmp = _grade(id);
+    for(var key in tmp) ans[key] = tmp[key];
+    
+    var rg = document.getElementById(id+"|regrade");
+    if (rg) {
+        if (rg.value.length < 4) { rg.classList.add('error'); throw new Error('Missing regrade'); }
+        rg.classList.remove('error');
+        ans.regrade = rg.value;
+    }
+
+    ajax(ans, 'respondtoregrade=1&asuser=<?=$user?>'); // FIX ME: add checking of response code
     document.getElementById("table|"+id).classList.add('done');
 }
 
