@@ -630,7 +630,8 @@ if ($isfaculty) {
                 $curr = fileinode("uploads/$slug/$user/".basename($f));
                 if ($orig !== FALSE && $orig == $curr) $live[] = basename($f);
                 else $dead[] = $f;
-            }
+	    }
+	    $orig_when = $when;
             $when = substr(basename($when),1);
             echo "<li>".prettyTime(DateTime::createFromFormat('Ymd-His',$when)->getTimestamp());
             if (count($dead)) {
@@ -644,9 +645,9 @@ if ($isfaculty) {
             if (count($live)) {
                  echo " (current copy of <tt>".implode('</tt> and <tt>', $live)."</tt>)";
                  echo " (click to make active version of ";
-                 foreach($dead as $i=>$path) {
+                 foreach($live as $i=>$path) {
                      if ($i != 0) echo " and ";
-                     echo "<button name='make_live' value='$path'>".basename($path)."</button>";
+                     echo "<button name='make_live' value='$orig_when/$path'>".basename($path)."</button>";
                  }
                  echo ")";
             }
