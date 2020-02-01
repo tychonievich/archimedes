@@ -643,6 +643,12 @@ if ($isfaculty) {
             }
             if (count($live)) {
                  echo " (current copy of <tt>".implode('</tt> and <tt>', $live)."</tt>)";
+                 echo " (click to make active version of ";
+                 foreach($dead as $i=>$path) {
+                     if ($i != 0) echo " and ";
+                     echo "<button name='make_live' value='$path'>".basename($path)."</button>";
+                 }
+                 echo ")";
             }
             echo "</li>";
             
