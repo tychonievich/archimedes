@@ -68,8 +68,8 @@ if (!hasFacultyRole($me)) { die("<p>Only faculty may view this page</p></body></
         <th onclick="sortcolumn('tbody',1,true)">Name ⇕</th>
         <th onclick="sortcolumn('tbody',2,true)">Section ⇕</th>
         <th onclick="sortcolumn('tbody',3,true)">Grade ⇕</th>
-        <th onclick="sortcolumn('tbody',4,true)">Earned ⇕</th>
         <th>Letter</th>
+        <th onclick="sortcolumn('tbody',5,true)">Earned ⇕</th>
         <th>Progress</th>
 </tr></thead>
 <tbody id="tbody">
