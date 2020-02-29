@@ -505,7 +505,8 @@ echo '</div>';
 // display feedback
 if ((($due < $now) || ($isstaff && $isself))
 && array_key_exists('grade', $details)
-&& !array_key_exists('.ext-req', $details)) {
+&& !array_key_exists('.ext-req', $details)
+&& !array_key_exists('withhold', $details)) {
     grader_fb($details);
 } else if (array_key_exists('.files', $details)) {
     if (($due < $now)
