@@ -722,6 +722,8 @@ function asgn_details($student, $slug) {
     }
     if (file_exists("uploads/$slug/$student/.grade"))
         $details['grade'] = json_decode(file_get_contents("uploads/$slug/$student/.grade"), TRUE);
+    if (file_exists("uploads/$slug/$student/.gradetemplate"))
+	$details['grade_template'] = json_decode(file_get_contents("uploads/$slug/$student/.gradetemplate"), TRUE);
     if (file_exists("uploads/$slug/$student/.autograde")) {
         $details['autograde'] = json_decode(file_get_contents("uploads/$slug/$student/.autograde"), TRUE);
         $details['autograde']['created'] = filemtime("uploads/$slug/$student/.autograde");

@@ -72,8 +72,12 @@ if (array_key_exists('addgrade', $_REQUEST) || array_key_exists('respondtoregrad
             // and weights
             if (count($grade['human']) != count($rub['human'])) die('wrong number of entries in human grading');
             foreach($rub['human'] as $i=>$val) {
-                if (!is_array($val)) $val = array('weight'=>1, 'name'=>$val);
-                if ($grade['human'][$i]['name'] != $val['name']) die('rubric has changed');
+                if (!is_array($val)) $val = array('weight'=>1, 'key'=>$val, 'name'=>$val);
+                if (array_key_exists('key', $grade['human'][$i])) {
+                    if ($grade['human'][$i]['key'] != $val['key']) die('rubric has changed');
+                } else {
+                    if ($grade['human'][$i]['name'] != $val['name']) die('rubric has changed');
+                }
                 $grade['human'][$i]['weight'] = $val['weight'];
             }
         }
@@ -106,20 +110,29 @@ function percent_tag($id, $text, $percent, $comment) {
     </div>";
 }
 
-function item_tag($id, $name, $select=False) {
-    if ($select !== False) {
+function item_tag($id, $name, $select=False, $weight_zero=False, $sometimes_na=False) {
+	$sna = '';
+    if ($weight_zero && $sometimes_na) {
+        $sna = "checked='checked'";
+        $sf = ''; $sp = ''; $sn = '';
+    } else if ($select !== False) {
         $sf = $select == 1.0 ? "checked='checked' " : "";
         $sp = $select == 0.5 ? "checked='checked' " : "";
         $sn = $select == 0.0 ? "checked='checked' " : "";
     } else {
         $sf = ''; $sp = ''; $sn = '';
     }
-    return "<div class='item'>
+    $result = "<div class='item'>
         <label class='full'><input type='radio' name='$id' value='1.0' $sf/>1</label>
         <label class='partial'><input type='radio' name='$id' value='0.5' $sp/>½</label>
-        <label class='none'><input type='radio' name='$id' value='0.0' $sn/>0</label>
+        <label class='none'><input type='radio' name='$id' value='0.0' $sn/>0</label>";
+    if ($sometimes_na !== False) {
+        $result .= "<label class='na'><input type='radio' name='$id' value='N/A' $sna/>N/A</label>";
+    }
+    $result .= "
         <span class='label'>$name</span>
     </div>";
+    return $result;
 }
 
 function percent_tree($details) {
@@ -166,15 +179,25 @@ function hybrid_tree($details) {
     }
     
     $items = array();
-    foreach($details['rubric']['human'] as $i=>$name) {
-        if (is_array($name)) $name = $name['name'];
+    if (!array_key_exists('grade', $details) && array_key_exists('grade_template', $details)) {
+	$details['grade'] = $details['grade_template'];
+    }
+    echo('creating hybrid tree<br>');
+    foreach($details['rubric']['human'] as $i=>$item) {
+        $sometimes_na = False;
+        $name = $item;
+        if (is_array($item) && array_key_exists('sometimes_na', $item)) $sometimes_na = True;
+        if (is_array($item) && array_key_exists('key', $name)) $key = $name['key'];
+        if (is_array($item) && array_key_exists('name', $name)) $name = $name['name'];
         if (array_key_exists('grade', $details)
         && array_key_exists('human', $details['grade'])
         && array_key_exists($i, $details['grade']['human'])
-        && ($details['grade']['human'][$i]['name'] == $name))
-            $select = $details['grade']['human'][$i]['ratio'];
-        else $select = False;
-        $items[] = item_tag("$id|$i", htmlspecialchars($name), $select);
+       	&& ($details['grade']['human'][$i]['key'] == $key || $details['grade']['human'][$i]['name'] == $name)
+	) {
+	    $select = $details['grade']['human'][$i]['ratio'];
+	    $weight_zero = $details['grade']['human'][$i]['weight'] == 0.0;
+	} else $select = False;
+        $items[] = item_tag("$id|$i", htmlspecialchars($name), $select, $weight_zero, $sometimes_na);
     }
     $items = implode("\n            ", $items);
     
@@ -430,7 +453,11 @@ function _grade(id) {
             num = Number(num[num.length-1]);
             if (num >= ans.human.length) ans.human.push(null);
             if (x.checked) {
-                ans.human[num] = {ratio:Number(x.value), name:key};
+                if (x.value=="N/A") {
+                    ans.human[num] = {ratio:0.0, weight:0.0, name:key};
+                } else {
+                    ans.human[num] = {ratio:Number(x.value), name:key};
+                }
                 x.parentElement.parentElement.classList.remove('error');
             }
         });

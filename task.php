@@ -464,7 +464,7 @@ if ($submitted) {
         echo file_download_link(basename($details['.latest']), $files[$details['.latest']]);
         echo "</li></ul>";
         $feedback_count = 0;
-        if (array_key_exists('.feedback-files', $details)) {
+        if (array_key_exists('.feedback-files', $details) && !array_key_exists('withhold', $details)) {
             $feedback_count = count($details['.feedback-files']);
             echo "<p>Grader outputs: <ul class='filelist'>";
             foreach($details['.feedback-files'] as $name=>$path) {
