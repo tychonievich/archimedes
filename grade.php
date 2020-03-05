@@ -124,7 +124,10 @@ function item_tag($id, $name, $select=False, $weight_zero=False, $sometimes_na=F
     }
     $result = "<div class='item'>
         <label class='full'><input type='radio' name='$id' value='1.0' $sf/>1</label>
+        <label class='partial'><input type='radio' name='$id' value='0.25' $sp/>¼</label>
         <label class='partial'><input type='radio' name='$id' value='0.5' $sp/>½</label>
+        <label class='partial'><input type='radio' name='$id' value='0.75' $sp/>¾</label>
+        <label class='partial'><input type='radio' name='$id' value='0.825' $sp/>⅞</label>
         <label class='none'><input type='radio' name='$id' value='0.0' $sn/>0</label>";
     if ($sometimes_na !== False) {
         $result .= "<label class='na'><input type='radio' name='$id' value='N/A' $sna/>N/A</label>";
