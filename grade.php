@@ -183,6 +183,8 @@ function hybrid_tree($details) {
         $ontime = '';
         $late = '';
     }
+    $ontime = ''; # FIXME
+    $late = '';
     
     $items = array();
     if (!array_key_exists('grade', $details) && array_key_exists('grade_template', $details)) {
