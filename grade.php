@@ -56,7 +56,7 @@ if (array_key_exists('addgrade', $_REQUEST) || array_key_exists('respondtoregrad
         $rub = rubricOf($grade['slug']);
         if ($rub['kind'] != $grade['kind']) die("expected '$rub[kind]' (not '$grade[kind]') for $grade[slug]");
         if ($grade['kind'] == 'hybrid') {
-            // add rubric details
+		// add rubric details
             $grade['auto-weight'] = $rub['auto-weight'];
             $grade['late-penalty'] = $rub['late-penalty'];
             // and computed values
@@ -124,10 +124,13 @@ function item_tag($id, $name, $select=False, $weight_zero=False, $sometimes_na=F
     }
     $result = "<div class='item'>
         <label class='full'><input type='radio' name='$id' value='1.0' $sf/>1</label>
-        <label class='partial'><input type='radio' name='$id' value='0.25' $sp/>¼</label>
-        <label class='partial'><input type='radio' name='$id' value='0.5' $sp/>½</label>
-        <label class='partial'><input type='radio' name='$id' value='0.75' $sp/>¾</label>
         <label class='partial'><input type='radio' name='$id' value='0.825' $sp/>⅞</label>
+        <label class='partial'><input type='radio' name='$id' value='0.75' $sp/>¾</label>
+        <label class='partial'><input type='radio' name='$id' value='0.625' $sp/>⅝</label>
+        <label class='partial'><input type='radio' name='$id' value='0.5' $sp/>½</label>
+        <label class='partial'><input type='radio' name='$id' value='0.375' $sp/>⅜</label>
+        <label class='partial'><input type='radio' name='$id' value='0.25' $sp/>¼</label>
+        <label class='partial'><input type='radio' name='$id' value='0.125' $sp/>⅛</label>
         <label class='none'><input type='radio' name='$id' value='0.0' $sn/>0</label>";
     if ($sometimes_na !== False) {
         $result .= "<label class='na'><input type='radio' name='$id' value='N/A' $sna/>N/A</label>";
@@ -174,7 +177,7 @@ function hybrid_tree($details) {
         $ontime = round($details['ontime']['correctness'] * 100, 1) . '% correct when due';
         $late = round($details['autograde']['correctness'] * 100, 1) . '% correct eventually';
     } else if (array_key_exists('autograde', $details)) {
-        $ontime = round($details['autograde']['correctness'] * 100, 1) . '% correct';
+        $ontime = ''; # FIXME round($details['autograde']['correctness'] * 100, 1) . '% correct';
         $late = '';
     } else {
         $ontime = '';
@@ -185,7 +188,6 @@ function hybrid_tree($details) {
     if (!array_key_exists('grade', $details) && array_key_exists('grade_template', $details)) {
 	$details['grade'] = $details['grade_template'];
     }
-    echo('creating hybrid tree<br>');
     foreach($details['rubric']['human'] as $i=>$item) {
         $sometimes_na = False;
         $name = $item;
