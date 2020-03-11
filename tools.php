@@ -591,7 +591,7 @@ function rubricOf($slug) {
     if (array_key_exists($slug, $aset) && array_key_exists('rubric', $aset[$slug]))
         $rubric = $aset[$slug]['rubric'];
     else if (file_exists("uploads/$slug/.rubric"))
-        $rubric = json_decode(file_get_contents("uploads/$slug/.rubric"), true);
+	$rubric = json_decode(file_get_contents("uploads/$slug/.rubric"), true);
     else if (file_exists("uploads/.rubric"))
         $rubric = json_decode(file_get_contents("uploads/.rubric"), true);
     else if (file_exists("meta/rubric.json"))

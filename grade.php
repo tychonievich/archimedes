@@ -124,13 +124,13 @@ function item_tag($id, $name, $select=False, $weight_zero=False, $sometimes_na=F
     }
     $result = "<div class='item'>
         <label class='full'><input type='radio' name='$id' value='1.0' $sf/>1</label>
-        <label class='partial'><input type='radio' name='$id' value='0.825' $sp/>⅞</label>
+        <!--<label class='partial'><input type='radio' name='$id' value='0.825' $sp/>⅞</label>-->
         <label class='partial'><input type='radio' name='$id' value='0.75' $sp/>¾</label>
-        <label class='partial'><input type='radio' name='$id' value='0.625' $sp/>⅝</label>
+        <!--<label class='partial'><input type='radio' name='$id' value='0.625' $sp/>⅝</label>-->
         <label class='partial'><input type='radio' name='$id' value='0.5' $sp/>½</label>
-        <label class='partial'><input type='radio' name='$id' value='0.375' $sp/>⅜</label>
+        <!--<label class='partial'><input type='radio' name='$id' value='0.375' $sp/>⅜</label>-->
         <label class='partial'><input type='radio' name='$id' value='0.25' $sp/>¼</label>
-        <label class='partial'><input type='radio' name='$id' value='0.125' $sp/>⅛</label>
+        <!--<label class='partial'><input type='radio' name='$id' value='0.125' $sp/>⅛</label>-->
         <label class='none'><input type='radio' name='$id' value='0.0' $sn/>0</label>";
     if ($sometimes_na !== False) {
         $result .= "<label class='na'><input type='radio' name='$id' value='N/A' $sna/>N/A</label>";
@@ -216,6 +216,13 @@ function hybrid_tree($details) {
         $hasmult ? htmlspecialchars($details['grade']['.mult']['comments']) : ''
     );
     
+    $hassub = array_key_exists('grade', $details) && array_key_exists('.sub',$details['grade']);
+    $sub = percent_tag(
+        "$id|sub", 
+        "grade subtraction",
+        $hassub ? $details['grade']['.sub']['portion']*100 : '',
+        $hassub ? htmlspecialchars($details['grade']['.sub']['comments']) : ''
+    );
     $comment = (array_key_exists('grade', $details) && array_key_exists('comments', $details['grade'])) ? htmlspecialchars($details['grade']['comments']) : '';
     
     // FIXME: there is currently no way to handle .adjustment files from this interface
@@ -229,6 +236,9 @@ function hybrid_tree($details) {
         <div class='comment'><span>Comment:</span><textarea id='$id|comment'>$comment</textarea></div>
         <div class='hide-outer hidden'><strong class='hide-header'>Multiplier (for special cases)</strong><div class='hide-inner'>
         $mult
+        </div></div>
+        <div class='hide-outer hidden'><strong class='hide-header'>Subtraction (for special cases)</strong><div class='hide-inner'>
+        $sub
         </div></div>
     </div>";
 }
@@ -771,8 +781,10 @@ if (array_key_exists('assignment', $_REQUEST)) {
         if (!$grader && count($stats['graders']) == 1) $grader = 'all';
         
         if ($redo == 'review' && $grader) {
-            echo "<h2>For $slug, you graded (most recent first):</h2><ul class='linklist'>";
-            foreach(array_reverse(toGrade($slug, $grader, $redo)) as $student) {
+            $list = toGrade($slug, $grader, $redo);
+            $count = count($list); 
+            echo "<h2>For $slug, you graded $count submissions (most recent first):</h2><ul class='linklist'>";
+            foreach(array_reverse($list) as $student) {
                 $stud = fullRoster()[$student];
                 echo "<li><a href='?assignment=$slug&student=$student'>$stud[name] ($student)</a>";
                 if ($grader != 'all') {
