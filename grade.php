@@ -111,13 +111,17 @@ function percent_tag($id, $text, $percent, $comment) {
 }
 
 function item_tag($id, $name, $select=False, $weight_zero=False, $sometimes_na=False) {
-	$sna = '';
+    $sna = '';
+    $s34 = '';
+    $s14 = '';
     if ($weight_zero && $sometimes_na) {
         $sna = "checked='checked'";
         $sf = ''; $sp = ''; $sn = '';
     } else if ($select !== False) {
         $sf = $select == 1.0 ? "checked='checked' " : "";
+        $s34 = $select == 0.75 ? "checked='checked' " : "";
         $sp = $select == 0.5 ? "checked='checked' " : "";
+        $s14 = $select == 0.25 ? "checked='checked' " : "";
         $sn = $select == 0.0 ? "checked='checked' " : "";
     } else {
         $sf = ''; $sp = ''; $sn = '';
@@ -125,11 +129,11 @@ function item_tag($id, $name, $select=False, $weight_zero=False, $sometimes_na=F
     $result = "<div class='item'>
         <label class='full'><input type='radio' name='$id' value='1.0' $sf/>1</label>
         <!--<label class='partial'><input type='radio' name='$id' value='0.825' $sp/>⅞</label>-->
-        <label class='partial'><input type='radio' name='$id' value='0.75' $sp/>¾</label>
+        <label class='partial'><input type='radio' name='$id' value='0.75' $s34/>¾</label>
         <!--<label class='partial'><input type='radio' name='$id' value='0.625' $sp/>⅝</label>-->
         <label class='partial'><input type='radio' name='$id' value='0.5' $sp/>½</label>
         <!--<label class='partial'><input type='radio' name='$id' value='0.375' $sp/>⅜</label>-->
-        <label class='partial'><input type='radio' name='$id' value='0.25' $sp/>¼</label>
+        <label class='partial'><input type='radio' name='$id' value='0.25' $s14/>¼</label>
         <!--<label class='partial'><input type='radio' name='$id' value='0.125' $sp/>⅛</label>-->
         <label class='none'><input type='radio' name='$id' value='0.0' $sn/>0</label>";
     if ($sometimes_na !== False) {
