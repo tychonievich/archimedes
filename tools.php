@@ -701,6 +701,7 @@ function svg_progress_bar($ep, $fp, $mp) {
  * - rubric (result of rubricOf)
  */
 function asgn_details($student, $slug) {
+    global $isstaff;
     $nopoints = array(
         'correctness' => 0,
         'feedback' => 'Did not submit',
@@ -720,7 +721,7 @@ function asgn_details($student, $slug) {
         $details['excused'] = TRUE;
         $details['weight'] = 0;
     }
-    if (file_exists("uploads/$slug/$student/.grade"))
+    if ((!array_key_exists('withhold',$details) || $isstaff) && file_exists("uploads/$slug/$student/.grade"))
         $details['grade'] = json_decode(file_get_contents("uploads/$slug/$student/.grade"), TRUE);
     if (file_exists("uploads/$slug/$student/.gradetemplate"))
 	$details['grade_template'] = json_decode(file_get_contents("uploads/$slug/$student/.gradetemplate"), TRUE);

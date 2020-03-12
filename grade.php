@@ -78,7 +78,9 @@ if (array_key_exists('addgrade', $_REQUEST) || array_key_exists('respondtoregrad
                 } else {
                     if ($grade['human'][$i]['name'] != $val['name']) die('rubric has changed');
                 }
-                $grade['human'][$i]['weight'] = $val['weight'];
+                if (!array_key_exists('weight', $grade['human'][$i])) {
+                    $grade['human'][$i]['weight'] = $val['weight'];
+                } 
             }
         }
         
@@ -208,7 +210,7 @@ function hybrid_tree($details) {
 	    $select = $details['grade']['human'][$i]['ratio'];
 	    $weight_zero = $details['grade']['human'][$i]['weight'] == 0.0;
 	} else $select = False;
-        $items[] = item_tag("$id|$i", htmlspecialchars($name), $select, $weight_zero, $sometimes_na);
+        $items[] = "<!-- weight " . $details['grade']['human'][$i]['weight'] .  "-->" . item_tag("$id|$i", htmlspecialchars($name), $select, $weight_zero, $sometimes_na);
     }
     $items = implode("\n            ", $items);
     
@@ -474,9 +476,11 @@ function _grade(id) {
             num = Number(num[num.length-1]);
             if (num >= ans.human.length) ans.human.push(null);
             if (x.checked) {
-                if (x.value=="N/A") {
+                if (x.value == "N/A") {
+                    console.log("found na for " + num);
                     ans.human[num] = {ratio:0.0, weight:0.0, name:key};
                 } else {
+                    console.log("found " + x.value + " for " + num);
                     ans.human[num] = {ratio:Number(x.value), name:key};
                 }
                 x.parentElement.parentElement.classList.remove('error');
