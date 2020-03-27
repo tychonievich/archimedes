@@ -253,9 +253,12 @@ function show_grade($gradeobj) {
 	$human_denom = 0;
 	foreach($gradeobj['human'] as $entry) {
 	    $r = $entry['ratio'];
+            if ($entry['weight'] == 0.0) {
+                continue;
+            }
 	    $human += $entry['weight'] * $r;
 	    $human_denom += $entry['weight'];
-	    _show_grade_obj_row($ans, $r, $entry['name']);
+	    _show_grade_obj_row($ans, $r, $entry['name'] . ' (' . $entry['weight'] . ' points)');
 	}
     }
     // comment
@@ -306,7 +309,15 @@ function _show_grade_obj_row(&$ans, $ratio, $comment, $percent=False, $prefix=''
             $ans[] = round($ratio*100, 1);
             $ans[] = '%';
         } else {
-            $ans[] = ($ratio >= 1) ? 'Yes!' : ($ratio > 0 ? 'Kind‑of' : 'No');
+            if ($ratio == 0.5) {
+                $ans[] = 'Kind-of (half credit)';
+            } else if ($ratio == 0.75) {
+                $ans[] = 'Kind-of (3/4ths credit)';
+            } else if ($ratio == 0.25) {
+                $ans[] = 'Kind-of (1/4ths credit)';
+            } else {
+                $ans[] = ($ratio >= 1) ? 'Yes!' : ($ratio > 0 ? 'Kind‑of' : 'No');
+            }
         }
 	$ans[] = '</td>';
 	$ans[] = '<td style="white-space: pre-wrap">';
