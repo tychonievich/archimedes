@@ -1070,7 +1070,7 @@ function score_of_task($details) {
 	    // (with multiplier)
 	    $score *= $gradeobj['.mult']['ratio'];
 	}
-	if (array_key_exists('.adjustment', $gradeobj)) {
+	if (array_key_exists('.adjustment', $gradeobj) && $score > 0.0) {
 	    // (with multiplier)
 	    $score *= $gradeobj['.adjustment']['mult'];
 	}
@@ -1110,7 +1110,7 @@ function score_of_task($details) {
         // (with multiplier)
         $score *= $gradeobj['.mult']['ratio'];
     }
-    if (array_key_exists('.adjustment', $gradeobj)) {
+    if (array_key_exists('.adjustment', $gradeobj) && $score > 0.0) {
         // (with multiplier)
         $score *= $gradeobj['.adjustment']['mult'];
     }
