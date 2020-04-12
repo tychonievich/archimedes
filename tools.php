@@ -1066,7 +1066,7 @@ function score_of_task($details) {
     if (!$gradeobj || !array_key_exists('kind', $gradeobj)) return NAN;
     if ($gradeobj['kind'] == 'percentage') {
 	$score = $gradeobj['ratio'];
-	if (array_key_exists('.mult', $gradeobj)) {
+	if (array_key_exists('.mult', $gradeobj) && $score > 0.0) {
 	    // (with multiplier)
 	    $score *= $gradeobj['.mult']['ratio'];
 	}
@@ -1106,7 +1106,7 @@ function score_of_task($details) {
         // (with subtraction)
         $score -= $gradeobj['.sub']['portion'];
     }
-    if (array_key_exists('.mult', $gradeobj)) {
+    if (array_key_exists('.mult', $gradeobj) && $score > 0.0) {
         // (with multiplier)
         $score *= $gradeobj['.mult']['ratio'];
     }
