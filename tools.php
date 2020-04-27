@@ -772,6 +772,20 @@ function asgn_details($student, $slug) {
         $t = filemtime($path);
         if ($t > $sentin) $sentin = $t;
     }
+    if (file_exists("uploads/$slug/$student/.latest")) {
+        $latest_lines = explode("\n",trim(file_get_contents("uploads/$slug/$student/.latest")));
+        $details['.latest'] = $latest_lines[0];
+        $details['.latest-subdir'] = $latest_lines[1];
+        foreach (glob("uploads/$slug/$student/." . $details['.latest-subdir'] . "/*") as $path) {
+            if (array_key_exists('feedback-files', $details)) {
+                foreach($details['feedback-files'] as $pattern) {
+                    if (fnmatch($pattern, basename($path), FNM_PERIOD)) $feedback = 1;
+                }
+            }
+            if ($feedback) continue;
+            $sentin = filemtime($path);
+        }
+    }
     $details['submitted'] = $sentin;
     $late_days = ($sentin - assignmentTime('due', $details)) / (60 * 60 * 24);
     $details['submitted-late-days'] = $late_days;
@@ -832,11 +846,6 @@ function asgn_details($student, $slug) {
     if (count($feedback_files) > 0)
         $details['.feedback-files'] = $feedback_files;
 
-    if (file_exists("uploads/$slug/$student/.latest")) {
-        $latest_lines = explode("\n",trim(file_get_contents("uploads/$slug/$student/.latest")));
-        $details['.latest'] = $latest_lines[0];
-        $details['.latest-subdir'] = $latest_lines[1];
-    }
     
     // add lists of partners
     $partners = array();
