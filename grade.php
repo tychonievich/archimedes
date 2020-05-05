@@ -81,6 +81,7 @@ if (array_key_exists('addgrade', $_REQUEST) || array_key_exists('respondtoregrad
                 if (!array_key_exists('weight', $grade['human'][$i])) {
                     $grade['human'][$i]['weight'] = $val['weight'];
                 } 
+                $grade['human'][$i]['key'] = $val['key'];
             }
         }
         
@@ -112,39 +113,48 @@ function percent_tag($id, $text, $percent, $comment) {
     </div>";
 }
 
-function item_tag($id, $name, $select=False, $weight_zero=False, $sometimes_na=False) {
-    $sna = '';
-    $s34 = '';
-    $s14 = '';
-    if ($weight_zero && $sometimes_na) {
-        $sna = "checked='checked'";
-        $sf = ''; $sp = ''; $sn = '';
-    } else if ($select !== False) {
-        $sf = $select == 1.0 ? "checked='checked' " : "";
-        $s34 = $select == 0.75 ? "checked='checked' " : "";
-        $sp = $select == 0.5 ? "checked='checked' " : "";
-        $s14 = $select == 0.25 ? "checked='checked' " : "";
-        $sn = $select == 0.0 ? "checked='checked' " : "";
+function item_tag($id, $name, $key, $select=False, $weight_zero=False, $sometimes_na=False, $prompt_points=False) {
+    $data = "data-key='$key' data-name='$name' name='$id'"
+    if ($prompt_points) { 
+        if ($select !== False) {
+            $value = $select * $prompt_points;
+        } else {
+            $value = "";
+        }
+        $result = "<div class='item'>
+            <label for='$id'>$name</label>: <input type='text' $data data-points-of='$prompt_points' value='$value'> of $prompt_points
+        </div>";
+        return $result;
     } else {
-        $sf = ''; $sp = ''; $sn = '';
+        $sna = '';
+        $s34 = '';
+        $s14 = '';
+        if ($weight_zero && $sometimes_na) {
+            $sna = "checked='checked'";
+            $sf = ''; $sp = ''; $sn = '';
+        } else if ($select !== False) {
+            $sf = $select == 1.0 ? "checked='checked' " : "";
+            $s34 = $select == 0.75 ? "checked='checked' " : "";
+            $sp = $select == 0.5 ? "checked='checked' " : "";
+            $s14 = $select == 0.25 ? "checked='checked' " : "";
+            $sn = $select == 0.0 ? "checked='checked' " : "";
+        } else {
+            $sf = ''; $sp = ''; $sn = '';
+        }
+        $result = "<div class='item'>
+            <label class='full'><input type='radio' $data value='1.0' $sf/>1</label>
+            <label class='partial'><input type='radio' $data value='0.75' $s34/>¾</label>
+            <label class='partial'><input type='radio' $data value='0.5' $sp/>½</label>
+            <label class='partial'><input type='radio' $data value='0.25' $s14/>¼</label>
+            <label class='none'><input type='radio' $data value='0.0' $sn/>0</label>";
+        if ($sometimes_na !== False) {
+            $result .= "<label class='na'><input type='radio' $data value='N/A' $sna/>N/A</label>";
+        }
+        $result .= "
+            <span class='label'>$name</span>
+        </div>";
+        return $result;
     }
-    $result = "<div class='item'>
-        <label class='full'><input type='radio' name='$id' value='1.0' $sf/>1</label>
-        <!--<label class='partial'><input type='radio' name='$id' value='0.825' $sp/>⅞</label>-->
-        <label class='partial'><input type='radio' name='$id' value='0.75' $s34/>¾</label>
-        <!--<label class='partial'><input type='radio' name='$id' value='0.625' $sp/>⅝</label>-->
-        <label class='partial'><input type='radio' name='$id' value='0.5' $sp/>½</label>
-        <!--<label class='partial'><input type='radio' name='$id' value='0.375' $sp/>⅜</label>-->
-        <label class='partial'><input type='radio' name='$id' value='0.25' $s14/>¼</label>
-        <!--<label class='partial'><input type='radio' name='$id' value='0.125' $sp/>⅛</label>-->
-        <label class='none'><input type='radio' name='$id' value='0.0' $sn/>0</label>";
-    if ($sometimes_na !== False) {
-        $result .= "<label class='na'><input type='radio' name='$id' value='N/A' $sna/>N/A</label>";
-    }
-    $result .= "
-        <span class='label'>$name</span>
-    </div>";
-    return $result;
 }
 
 function percent_tree($details) {
@@ -198,10 +208,12 @@ function hybrid_tree($details) {
     }
     foreach($details['rubric']['human'] as $i=>$item) {
         $sometimes_na = False;
+        $prompt_points = False;
         $name = $item;
         if (is_array($item) && array_key_exists('sometimes_na', $item)) $sometimes_na = True;
-        if (is_array($item) && array_key_exists('key', $name)) $key = $name['key'];
-        if (is_array($item) && array_key_exists('name', $name)) $name = $name['name'];
+        if (is_array($item) && array_key_exists('key', $item)) $key = $item['key'];
+        if (is_array($item) && array_key_exists('name', $item)) $name = $item['name'];
+        if (is_array($item) && array_key_exists('prompt_points', $item)) $prompt_points = $item['prompt_points'];
         if (array_key_exists('grade', $details)
         && array_key_exists('human', $details['grade'])
         && array_key_exists($i, $details['grade']['human'])
@@ -210,7 +222,7 @@ function hybrid_tree($details) {
 	    $select = $details['grade']['human'][$i]['ratio'];
 	    $weight_zero = $details['grade']['human'][$i]['weight'] == 0.0;
 	} else $select = False;
-        $items[] = "<!-- weight " . $details['grade']['human'][$i]['weight'] .  "-->" . item_tag("$id|$i", htmlspecialchars($name), $select, $weight_zero, $sometimes_na);
+        $items[] = "<!-- weight " . $details['grade']['human'][$i]['weight'] .  "-->" . item_tag("$id|$i", htmlspecialchars($name), $key, $select, $weight_zero, $sometimes_na, $prompt_points);
     }
     $items = implode("\n            ", $items);
     
@@ -486,6 +498,16 @@ function _grade(id) {
                 x.parentElement.parentElement.classList.remove('error');
             }
         });
+        document.getElementById(id).querySelectorAll('input[data-points-of]').forEach(function(x){
+            console.log('processing ' + x + ": " + x.dataset.pointsOf);
+            var num = x.name.split('|');
+            var key = x.dataset.key;
+            num = Number(num[num.length-1]);
+            if (num >= ans.human.length) ans.human.push(null);
+            var value = parseFloat(x.value) / parseFloat(x.dataset.pointsOf);
+            ans.human[num] = {name:key, ratio:value};
+            x.parentElement.parentElement.classList.remove('error');
+        });
         var ok = true
         for(var i=0; i<ans.human.length; i+=1) if (ans.human[i] === null) {
             document.getElementById(id+'|items').children[i].classList.add('error');
@@ -616,7 +638,7 @@ function gradeableTree($limit=False) {
     global $issuperuser;
     $ans = array();
     $everyone = fullRoster();
-    foreach(assignments() as $slug => $details) {
+    foreach(assignments(true) as $slug => $details) {
         if ($limit && $slug != $limit) continue;
         $ct = closeTime($details);
         if ($ct == True && $ct < time() || $issuperuser) {
@@ -679,6 +701,7 @@ function toGrade($slug, $grader, $redo) {
             if (file_exists("users/.graded/$grader/$slug"))
                 $ans = explode("\n", trim(file_get_contents("users/.graded/$grader/$slug")));
         }
+        $ans = array_unique($ans);
     } else if ($grader == 'all' || $grader == 'no grader') {
         foreach(glob("uploads/$slug/*") as $path) {
             if ((!$redo) == file_exists("$path/.grade")) continue;

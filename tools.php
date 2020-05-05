@@ -67,18 +67,21 @@ function rosterEntry($id, $check=false) {
 }
 
 $_assignments = False;
+$_all_assignments = False;
+function _filter_hidden($entry) { return !array_key_exists("hide", $entry) || !$entry["hide"]; }
 /// Helper function to read the set of assignments (needed in almost every view)
-function assignments() {
-    global $_assignments, $metadata;
+function assignments($showhidden=false) {
+    global $_assignments, $_all_assignments, $metadata;
     if ($_assignments === False) {
-        $_assignments = json_decode(file_get_contents("meta/assignments.json"), true);
-        foreach($_assignments as $k=>$v) {
+        $_all_assignments = json_decode(file_get_contents("meta/assignments.json"), true);
+        foreach($_all_assignments as $k=>$v) {
             if (!array_key_exists('fbdelay', $v)) {
-                $_assignments[$k]['fbdelay'] = array_key_exists('fbdelay', $metadata) ? $metadata['fbdelay'] : 2;
+                $_all_assignments[$k]['fbdelay'] = array_key_exists('fbdelay', $metadata) ? $metadata['fbdelay'] : 2;
             }
         }
+        $_assignments = array_filter($_all_assignments, _filter_hidden);
     }
-    return $_assignments;
+    return $showhidden ? $_all_assignments : $_assignments;
 }
 
 $_coursegrade = False;
