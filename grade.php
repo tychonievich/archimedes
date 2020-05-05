@@ -80,8 +80,13 @@ if (array_key_exists('addgrade', $_REQUEST) || array_key_exists('respondtoregrad
                 }
                 if (!array_key_exists('weight', $grade['human'][$i])) {
                     $grade['human'][$i]['weight'] = $val['weight'];
-                } 
-                $grade['human'][$i]['key'] = $val['key'];
+                }
+                if (array_key_exists('type', $val)) {
+                    $grade['human'][$i]['type'] = $val['type'];
+                }
+                if (array_key_exists('key', $val)) {
+                    $grade['human'][$i]['key'] = $val['key'];
+                }
             }
         }
         
@@ -113,45 +118,67 @@ function percent_tag($id, $text, $percent, $comment) {
     </div>";
 }
 
-function item_tag($id, $name, $key, $select=False, $weight_zero=False, $sometimes_na=False, $prompt_points=False) {
-    $data = "data-key='$key' data-name='$name' name='$id'";
-    if ($prompt_points) { 
-        if ($select !== False) {
-            $value = $select * $prompt_points;
+function item_tag($id, $rubric, $selected, $weight) {
+    $key = htmlspecialchars($rubric["key"]);
+    $name = htmlspecialchars($rubric["name"]);
+    $rubric_weight = $rubric["weight"];
+    $type = "radio";
+    if (array_key_exists("type", $rubric)) {
+        $type = $rubric["type"];
+    }
+    $data = "data-key='$key' data-name='$name' name='$id' data-weight='$weight' data-current-weight='$weight' data-current-selected='$selected'";
+    if ($type == "points") { 
+        if ($selected !== False) {
+            $value = $selected * $weight;
         } else {
             $value = "";
         }
         $result = "<div class='item'>
-            <label for='$id'>$name</label>: <input type='text' $data data-points-of='$prompt_points' value='$value'> of $prompt_points
-        </div>";
+            <label for='$id'>$name</label>: <input type='text' $data data-points-of='$rubric_weight' value='$value'> of $rubric_weight
+        ";
+        $result .= "</div>";
+        if (array_key_exists('allow_comment', $rubric)) {
+            $result .= "
+                <div class='itemcomment'><label for='$id|comment'>Item comment:</label>
+                <textarea $data data-is-item-comment='yes' id='$id|comment'>$comment</textarea>
+                </div>
+            ";
+        }
         return $result;
     } else {
-        $sna = '';
-        $s34 = '';
-        $s14 = '';
-        if ($weight_zero && $sometimes_na) {
-            $sna = "checked='checked'";
-            $sf = ''; $sp = ''; $sn = '';
-        } else if ($select !== False) {
-            $sf = $select == 1.0 ? "checked='checked' " : "";
-            $s34 = $select == 0.75 ? "checked='checked' " : "";
-            $sp = $select == 0.5 ? "checked='checked' " : "";
-            $s14 = $select == 0.25 ? "checked='checked' " : "";
-            $sn = $select == 0.0 ? "checked='checked' " : "";
-        } else {
-            $sf = ''; $sp = ''; $sn = '';
+        $result = "<div class='item'>";
+        $options = [[1.0, "1"], [0.75, "¾"], [0.5, "½"], [0.25, "¼"], [0.0, "0"]];
+        if ($type == "radio3") {
+            $options = [[1.0, "1"], [0.5, "½"], [0.0, "0"]];
         }
-        $result = "<div class='item'>
-            <label class='full'><input type='radio' $data value='1.0' $sf/>1</label>
-            <label class='partial'><input type='radio' $data value='0.75' $s34/>¾</label>
-            <label class='partial'><input type='radio' $data value='0.5' $sp/>½</label>
-            <label class='partial'><input type='radio' $data value='0.25' $s14/>¼</label>
-            <label class='none'><input type='radio' $data value='0.0' $sn/>0</label>";
+        $sometimes_na = array_key_exists('sometimes_na', $rubric) && $rubric['sometimes_na'];
+        foreach ($options as $option) {
+            $cur_selected = $selected == $option[0];
+            if ($cur_selected) {
+                $checked = "checked='checked' ";
+            } else {
+                $checked = "";
+            }
+            $cur_class = "partial";
+            if ($option[0] == 1.0) {
+                $cur_class = "full";
+            } else if ($option[0] == 0.0) {
+                $cur_class = "none";
+            }
+            $cur_text = $option[1];
+            $result.= "<label class='$cur_class'><input type='radio' $data value='$option[0]' $cur_selected>$cur_text</label>\n";
+        }
         if ($sometimes_na !== False) {
-            $result .= "<label class='na'><input type='radio' $data value='N/A' $sna/>N/A</label>";
+            $cur_checked = '';
+            if ($weight == 0.0) {
+                $cur_checked = "checked='checked' ";
+            }
+            $result .= "<label class='na'><input type='radio' $data value='N/A' $cur_checked>N/A</label>";
         }
         $result .= "
             <span class='label'>$name</span>
+        ";
+        $result .="
         </div>";
         return $result;
     }
@@ -209,20 +236,24 @@ function hybrid_tree($details) {
     foreach($details['rubric']['human'] as $i=>$item) {
         $sometimes_na = False;
         $prompt_points = False;
-        $name = $item;
-        if (is_array($item) && array_key_exists('sometimes_na', $item)) $sometimes_na = True;
-        if (is_array($item) && array_key_exists('key', $item)) $key = $item['key'];
-        if (is_array($item) && array_key_exists('name', $item)) $name = $item['name'];
-        if (is_array($item) && array_key_exists('prompt_points', $item)) $prompt_points = $item['prompt_points'];
+        if (!is_array($item)) {
+            $item = array('name' => $item, 'key' => $item, 'weight' => 1.0, 'type' => 'radio');
+        }
+        if (!array_key_exists($item, 'key')) {
+            $item['key'] = $item['name'];
+        }
         if (array_key_exists('grade', $details)
         && array_key_exists('human', $details['grade'])
         && array_key_exists($i, $details['grade']['human'])
-       	&& ($details['grade']['human'][$i]['key'] == $key || $details['grade']['human'][$i]['name'] == $name)
+       	&& ($details['grade']['human'][$i]['key'] == $item['key'] || $details['grade']['human'][$i]['name'] == $item['name'])
 	) {
 	    $select = $details['grade']['human'][$i]['ratio'];
-	    $weight_zero = $details['grade']['human'][$i]['weight'] == 0.0;
-	} else $select = False;
-        $items[] = "<!-- weight " . $details['grade']['human'][$i]['weight'] .  "-->" . item_tag("$id|$i", htmlspecialchars($name), $key, $select, $weight_zero, $sometimes_na, $prompt_points);
+	    $weight = $details['grade']['human'][$i]['weight'];
+	} else {
+            $select = False;
+            $weight = $item['weight'];
+        }
+        $items[] =  item_tag("$id|$i", $item, $select, $weight);
     }
     $items = implode("\n            ", $items);
     
@@ -508,6 +539,13 @@ function _grade(id) {
             ans.human[num] = {name:key, ratio:value};
             x.parentElement.parentElement.classList.remove('error');
         });
+        document.getElementById(id).querySelectorAll('textarea[data-is-item-comment]').forEach(function(x){
+            var num = x.name.split('|');
+            var key = x.dataset.key;
+            num = Number(num[num.length-1]);
+            ans.human[num]['comment'] = x.value;
+            x.parentElement.parentElement.classList.remove('error');
+        });
         var ok = true
         for(var i=0; i<ans.human.length; i+=1) if (ans.human[i] === null) {
             document.getElementById(id+'|items').children[i].classList.add('error');
@@ -667,7 +705,7 @@ function gradeableTree($limit=False) {
                     'ungraded'=>0,
                     'graders'=>array(),
                 );
-                if ($gid != 'no grader' || $issuperuser)
+                if (true)
                     $ans[$slug][$status] += 1;
 
                 if (!array_key_exists($gid, $ans[$slug]['graders'])) $ans[$slug]['graders'][$gid] = array(
@@ -887,6 +925,9 @@ if (array_key_exists('assignment', $_REQUEST)) {
     echo '<h2>Pick an assignment:</h2>';
     echo '<ul class="linklist">';
     foreach($options as $slug=>$stats) {
+        if (array_key_exists('prefix', $_REQUEST) && substr($slug, 0, strlen($_REQUEST['prefix'])) != $_REQUEST['prefix']) {
+            continue;
+        }
         if (strlen($slug) == 0 || $slug[0] == '.') continue; // just in case
         echo "<li><a href='$_SERVER[SCRIPT_NAME]?assignment=$slug'";
         if ($stats['ungraded'] > 0) echo " class='ungraded'";
