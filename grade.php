@@ -114,7 +114,7 @@ function percent_tag($id, $text, $percent, $comment) {
 }
 
 function item_tag($id, $name, $key, $select=False, $weight_zero=False, $sometimes_na=False, $prompt_points=False) {
-    $data = "data-key='$key' data-name='$name' name='$id'"
+    $data = "data-key='$key' data-name='$name' name='$id'";
     if ($prompt_points) { 
         if ($select !== False) {
             $value = $select * $prompt_points;
