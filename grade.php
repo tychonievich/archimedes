@@ -118,7 +118,7 @@ function percent_tag($id, $text, $percent, $comment) {
     </div>";
 }
 
-function item_tag($id, $rubric, $selected, $weight) {
+function item_tag($id, $rubric, $selected, $weight, $comment) {
     $key = htmlspecialchars($rubric["key"]);
     $name = htmlspecialchars($rubric["name"]);
     $rubric_weight = $rubric["weight"];
@@ -127,7 +127,18 @@ function item_tag($id, $rubric, $selected, $weight) {
         $type = $rubric["type"];
     }
     $data = "data-key='$key' data-name='$name' name='$id' data-weight='$weight' data-current-weight='$weight' data-current-selected='$selected'";
-    if ($type == "points") { 
+    if ($type == "comment") {
+        $result = "<div class='item'>
+            <label for='$id'>$name</label>:
+            </div>
+        ";
+        $result .= "
+            <div class='itemcomment'><label for='$id|comment'>Standalone comment:</label>
+            <textarea $data data-is-item-comment='yes' id='$id|comment'>$comment</textarea>
+            </div>
+        ";
+        return $result;
+    } else if ($type == "points") { 
         if ($selected !== False) {
             $value = $selected * $weight;
         } else {
@@ -153,7 +164,7 @@ function item_tag($id, $rubric, $selected, $weight) {
         }
         $sometimes_na = array_key_exists('sometimes_na', $rubric) && $rubric['sometimes_na'];
         foreach ($options as $option) {
-            $cur_selected = $selected == $option[0];
+            $cur_selected = ($selected == $option[0]);
             if ($cur_selected) {
                 $checked = "checked='checked' ";
             } else {
@@ -166,7 +177,7 @@ function item_tag($id, $rubric, $selected, $weight) {
                 $cur_class = "none";
             }
             $cur_text = $option[1];
-            $result.= "<label class='$cur_class'><input type='radio' $data value='$option[0]' $cur_selected>$cur_text</label>\n";
+            $result.= "<label class='$cur_class'><input type='radio' $data value='$option[0]' $checked>$cur_text</label>\n";
         }
         if ($sometimes_na !== False) {
             $cur_checked = '';
@@ -249,11 +260,13 @@ function hybrid_tree($details) {
 	) {
 	    $select = $details['grade']['human'][$i]['ratio'];
 	    $weight = $details['grade']['human'][$i]['weight'];
+            $comment = $details['grade']['human'][$i]['comment'];
 	} else {
             $select = False;
             $weight = $item['weight'];
+            $comment = '';
         }
-        $items[] =  item_tag("$id|$i", $item, $select, $weight);
+        $items[] =  item_tag("$id|$i", $item, $select, $weight, $comment);
     }
     $items = implode("\n            ", $items);
     
@@ -488,7 +501,7 @@ function _grade(id) {
         { element.classList.add('error'); throw new Error('Missing percentage'); }
         
         val = Number(val);
-        if (val < 0 || val > 0 && val <= 1 || val > 100)
+        if (val < 0 || val > 0 && val <= 1)
         { element.classList.add('error'); throw new Error('Invalid percentage'); }
         
         if (com.length < 4)
@@ -517,7 +530,7 @@ function _grade(id) {
             var key = x.parentElement.parentElement.lastElementChild.innerHTML;
             var num = x.name.split('|');
             num = Number(num[num.length-1]);
-            if (num >= ans.human.length) ans.human.push(null);
+            while (num >= ans.human.length) ans.human.push(null);
             if (x.checked) {
                 if (x.value == "N/A") {
                     console.log("found na for " + num);
@@ -533,16 +546,22 @@ function _grade(id) {
             console.log('processing ' + x + ": " + x.dataset.pointsOf);
             var num = x.name.split('|');
             var key = x.dataset.key;
+            var name = x.dataset.name;
             num = Number(num[num.length-1]);
-            if (num >= ans.human.length) ans.human.push(null);
+            while (num >= ans.human.length) ans.human.push(null);
             var value = parseFloat(x.value) / parseFloat(x.dataset.pointsOf);
-            ans.human[num] = {name:key, ratio:value};
+            ans.human[num] = {name:name, ratio:value};
             x.parentElement.parentElement.classList.remove('error');
         });
         document.getElementById(id).querySelectorAll('textarea[data-is-item-comment]').forEach(function(x){
             var num = x.name.split('|');
             var key = x.dataset.key;
+            var name = x.dataset.name;
             num = Number(num[num.length-1]);
+            while (num >= ans.human.length) ans.human.push(null);
+            if (ans.human[num] == null) {
+                ans.human[num] = {name: name, weight: 0}
+            }
             ans.human[num]['comment'] = x.value;
             x.parentElement.parentElement.classList.remove('error');
         });
@@ -572,8 +591,8 @@ function _grade(id) {
     if (sub_correct.length > 0) {
         sub_correct = check_percent(sub_correct, sub_comment, document.getElementById(id+'|sub'));
         ans['.sub'] = {"kind":"percentage"
-                       ,"portion":mult_correct/100
-                       ,"comments":mult_comment
+                       ,"portion":sub_correct/100
+                       ,"comments":sub_comment
                        };
     }
     return ans;
@@ -729,7 +748,7 @@ function toGrade($slug, $grader, $redo) {
             $ans[] = $student;
         }
         shuffle($ans);
-    } else if ($redo == 'review') {
+    } else if ($redo == 'review' || $redo == 'review2') {
         if ($grader == 'all') { // show anything anyone has graded
             foreach(glob("users/.graded/*/$slug") as $req) {
                 $ans = array_merge($ans, explode("\n", trim(file_get_contents($req))));

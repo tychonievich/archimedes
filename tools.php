@@ -1086,6 +1086,10 @@ function score_of_task($details) {
 	    // (with multiplier)
 	    $score *= $gradeobj['.adjustment']['mult'];
 	}
+        if (array_key_exists('.sub', $gradeobj)) {
+            // (with subtraction)
+            $score -= $gradeobj['.sub']['portion'];
+        }
 	return $score;
     }
 
