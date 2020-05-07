@@ -253,12 +253,27 @@ function show_grade($gradeobj) {
 	$human_denom = 0;
 	foreach($gradeobj['human'] as $entry) {
 	    $r = $entry['ratio'];
-            if ($entry['weight'] == 0.0) {
+            if ($entry['weight'] == 0.0 && (!array_key_exists('type', $entry) || array_key_exists('sometimes_na', $entry))) {
                 continue;
             }
 	    $human += $entry['weight'] * $r;
 	    $human_denom += $entry['weight'];
-	    _show_grade_obj_row($ans, $r, $entry['name'] . ' (' . $entry['weight'] . ' points)');
+            if ($entry['type'] == 'points') {
+                _show_grade_obj_points($ans, $r, $entry['weight'], $entry['name']);
+            } else if ($entry['type'] == 'comment') {
+            } else {
+                if ($entry['weight'] == 0) {
+                    _show_grade_obj_row($ans, $r, $entry['name'] . ' (not part of grade)');
+                } else {
+                    _show_grade_obj_row($ans, $r, $entry['name'] . ' (' . $entry['weight'] . ' points)');
+                }
+            }
+            if (array_key_exists('comment', $entry) && strlen($entry['comment']) > 0) {
+                _show_grade_obj_row($ans, false, $entry['comment']);
+            }
+            if (array_key_exists('comments', $entry) && strlen($entry['comments']) > 0) {
+                _show_grade_obj_row($ans, false, $entry['comments']);
+            }
 	}
     }
     // comment
@@ -296,6 +311,21 @@ function show_grade($gradeobj) {
     
     $ans[] = '</tbody></table>';
     return implode('', $ans);
+}
+
+function _show_grade_obj_points(&$ans, $ratio, $weight, $comment) {
+    $ans[] = '<tr>';
+    $ans[] = '<td class="';
+    $ans[] = (($ratio >= 1) ? 'full' : ($ratio > 0 ? 'partial' : 'no'));
+    $ans[] = ' credit"';
+    $ans[] = '>';
+    $points = round($ratio * $weight, 1);
+    $of_points = round($weight, 1);
+    $ans[] = "$points / $of_points";
+    $ans[] = '</td>';
+    $ans[] = '<td style="white-space: pre-wrap">';
+    $ans[] = htmlspecialchars($comment);
+    $ans[] = '</td></tr>';
 }
 function _show_grade_obj_row(&$ans, $ratio, $comment, $percent=False, $prefix='') {
     $ans[] = '<tr>';
