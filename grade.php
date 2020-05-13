@@ -261,6 +261,9 @@ function hybrid_tree($details) {
 	    $select = $details['grade']['human'][$i]['ratio'];
 	    $weight = $details['grade']['human'][$i]['weight'];
             $comment = $details['grade']['human'][$i]['comment'];
+            if (strlen($comment) == 0 && array_key_exists('comments', $details['grade']['human'][$i])) {
+                $comment = $details['grade']['human'][$i]['comments'];
+            }
 	} else {
             $select = False;
             $weight = $item['weight'];
