@@ -253,23 +253,22 @@ function show_grade($gradeobj) {
 	$human_denom = 0;
 	foreach($gradeobj['human'] as $entry) {
 	    $r = $entry['ratio'];
-            if ($entry['weight'] == 0.0 && (!array_key_exists('type', $entry) || array_key_exists('sometimes_na', $entry))) {
+            if ($entry['weight'] == 0.0 && array_key_exists('sometimes_na', $entry)) {
                 continue;
             }
 	    $human += $entry['weight'] * $r;
 	    $human_denom += $entry['weight'];
-            if ($entry['type'] == 'points') {
+            if ($entry['kind'] == 'points') {
                 _show_grade_obj_points($ans, $r, $entry['weight'], $entry['name']);
-            } else if ($entry['type'] == 'comment') {
-            } else {
+            } else if ($entry['kind'] == 'comment') {
+            } else if (getShowPointsOption()) {
                 if ($entry['weight'] == 0) {
                     _show_grade_obj_row($ans, $r, $entry['name'] . ' (not part of grade)');
                 } else {
                     _show_grade_obj_row($ans, $r, $entry['name'] . ' (' . $entry['weight'] . ' points)');
                 }
-            }
-            if (array_key_exists('comment', $entry) && strlen($entry['comment']) > 0) {
-                _show_grade_obj_row($ans, false, $entry['comment']);
+            } else {
+                _show_grade_obj_row($ans, $r, $entry['name']);
             }
             if (array_key_exists('comments', $entry) && strlen($entry['comments']) > 0) {
                 _show_grade_obj_row($ans, false, $entry['comments']);

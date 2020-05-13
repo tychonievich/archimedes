@@ -81,8 +81,8 @@ if (array_key_exists('addgrade', $_REQUEST) || array_key_exists('respondtoregrad
                 if (!array_key_exists('weight', $grade['human'][$i])) {
                     $grade['human'][$i]['weight'] = $val['weight'];
                 }
-                if (array_key_exists('type', $val)) {
-                    $grade['human'][$i]['type'] = $val['type'];
+                if (array_key_exists('kind', $val)) {
+                    $grade['human'][$i]['kind'] = $val['kind'];
                 }
                 if (array_key_exists('key', $val)) {
                     $grade['human'][$i]['key'] = $val['key'];
@@ -122,23 +122,23 @@ function item_tag($id, $rubric, $selected, $weight, $comment) {
     $key = htmlspecialchars($rubric["key"]);
     $name = htmlspecialchars($rubric["name"]);
     $rubric_weight = $rubric["weight"];
-    $type = "radio";
-    if (array_key_exists("type", $rubric)) {
-        $type = $rubric["type"];
+    $kind = "radio3";
+    if (array_key_exists("kind", $rubric)) {
+        $kind = $rubric["kind"];
     }
     $data = "data-key='$key' data-name='$name' name='$id' data-weight='$weight' data-current-weight='$weight' data-current-selected='$selected'";
-    if ($type == "comment") {
+    if ($kind == "comment") {
         $result = "<div class='item'>
             <label for='$id'>$name</label>:
             </div>
         ";
         $result .= "
             <div class='itemcomment'><label for='$id|comment'>Standalone comment:</label>
-            <textarea $data data-is-item-comment='yes' id='$id|comment'>$comment</textarea>
+            <textarea $data data-is-item-comment='yes' id='$id|comment'>$comments</textarea>
             </div>
         ";
         return $result;
-    } else if ($type == "points") { 
+    } else if ($kind == "points") { 
         if ($selected !== False) {
             $value = $selected * $weight;
         } else {
@@ -157,11 +157,12 @@ function item_tag($id, $rubric, $selected, $weight, $comment) {
         }
         return $result;
     } else {
-        $result = "<div class='item'>";
-        $options = [[1.0, "1"], [0.75, "¾"], [0.5, "½"], [0.25, "¼"], [0.0, "0"]];
-        if ($type == "radio3") {
+        if ($kind == "radio5") {
+            $options = [[1.0, "1"], [0.75, "¾"], [0.5, "½"], [0.25, "¼"], [0.0, "0"]];
+        } else {
             $options = [[1.0, "1"], [0.5, "½"], [0.0, "0"]];
         }
+        $result = "<div class='item'>";
         $sometimes_na = array_key_exists('sometimes_na', $rubric) && $rubric['sometimes_na'];
         foreach ($options as $option) {
             $cur_selected = ($selected == $option[0]);
@@ -248,7 +249,7 @@ function hybrid_tree($details) {
         $sometimes_na = False;
         $prompt_points = False;
         if (!is_array($item)) {
-            $item = array('name' => $item, 'key' => $item, 'weight' => 1.0, 'type' => 'radio');
+            $item = array('name' => $item, 'key' => $item, 'weight' => 1.0, 'kind' => 'radio');
         }
         if (!array_key_exists($item, 'key')) {
             $item['key'] = $item['name'];
@@ -260,10 +261,7 @@ function hybrid_tree($details) {
 	) {
 	    $select = $details['grade']['human'][$i]['ratio'];
 	    $weight = $details['grade']['human'][$i]['weight'];
-            $comment = $details['grade']['human'][$i]['comment'];
-            if (strlen($comment) == 0 && array_key_exists('comments', $details['grade']['human'][$i])) {
-                $comment = $details['grade']['human'][$i]['comments'];
-            }
+            $comment = $details['grade']['human'][$i]['comments'];
 	} else {
             $select = False;
             $weight = $item['weight'];
@@ -565,7 +563,7 @@ function _grade(id) {
             if (ans.human[num] == null) {
                 ans.human[num] = {name: name, weight: 0}
             }
-            ans.human[num]['comment'] = x.value;
+            ans.human[num]['comments'] = x.value;
             x.parentElement.parentElement.classList.remove('error');
         });
         var ok = true

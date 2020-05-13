@@ -606,6 +606,15 @@ function rubricOf($slug) {
     return $rubric;
 }
 
+function getShowPointsOption() {
+    global $metadata;
+    if (array_key_exists('show_points', $metadata)) {
+        return $metadata['show_points'];
+    } else {
+        return false;
+    }
+}
+
 
 
 /** returns HTML tags to place a file nicely on the the screen */
