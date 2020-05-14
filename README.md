@@ -224,8 +224,10 @@ You may optionally also include
     be replaced with the assignment due time, and `CLOSE_TIME` with its closed time. Default is 
     `"is due DUE_TIME; you may subimit fixes until CLOSE_TIME"`.
 
--   `grading-show-sub`: if set, show an option in the grader to subtract an amount from the grade
+-   `grading-show-sub`: if set to true, show an option in the grader to subtract an amount from the grade
     as a special case adjustment
+
+-   `show-late-estimate-on-submit`: if set to true, show an estimate of the late penalty a student receive on submission in addition to mentioning that their submission will be late.
 
 ## Rubrics and `.grade`s
 

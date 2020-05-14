@@ -602,7 +602,7 @@ if ($submittable) {
         echo " ($user)";
     }
     if ($class == 'late') {
-	if (array_key_exists('late-policy', $details)) {
+	if (array_key_exists('show-late-estimate-on-submit', $metadata) && $metadata['show-late-estimate-on-submit'] && array_key_exists('late-policy', $details)) {
 	    $late_days = (time() - assignmentTime('due', $details) + 60) / (60 * 60 * 24);
 	    $late_days = floor($late_days);
 	    $late_days_p1 = $late_days + 1;
