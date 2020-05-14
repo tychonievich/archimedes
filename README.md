@@ -141,6 +141,15 @@ The following keys, if present, also have defined meaning:
     Defaults to `1` if omitted.
     For example, if two midterms and the final exam are the entries of the `"Exam"` group
     and the final has `"weight":2`, the total grade for the exam group will be $(m_1 + m_2 + 2 m_3) \div 4$.
+
+-  `single-file`: if set, only expect a single file to be submitted for this assignment. Anything other than
+    the most recently submitted file will be displayed as "Older submissions".
+
+-  `withhold`: if set, don't show grades for this assignment to students
+
+-  `hide`: if set, don't show this assignment to students at all or use it for grade computations
+
+-  `feedback_files`: list of glob patterns for files that should be considered feedback (e.g. autograder outputs)
     
 ## `coursegrade.json`
 
@@ -205,6 +214,13 @@ You may optionally also include
     Currently values are ignored.
 
 -   `no-queue`, an object with keys being assignment `group`s that should not be queued for automated feedback when submitted and values to display upon submission (not displayed if `""`).
+
+-   `past_due_message`, message to display on past-due assignments on the submission page. `DUE_TIME` will
+    be replaced with the assignment due time, and `CLOSE_TIME` with its closed time. Default is 
+    `"is due DUE_TIME; you may subimit fixes until CLOSE_TIME"`.
+
+-   `grading_show_sub`: if set, show an option in the grader to subtract an amount from the grade
+    as a special case adjustment
 
 ## Rubrics and `.grade`s
 
@@ -280,6 +296,21 @@ as well as how much to deduct the late score.
     ,".mult":{"kind":"percentage","ratio":0.8,"comments":"professionalism penalty"}
     }
     ````
+
+The items in `human` portion of the rubric can include a `"kind"` key, which can have any of the following values
+    
+    *  radio3 (default): full/half/none radio options
+    *  radio5: full/three-quarters/half/one-quarter/none radio options
+    *  points: ask for a number of points based on the weight of the option
+    *  comment: provide a field for writing a comment; "weight" must be none
+
+In addition the following keys are supported on each rubric item:
+
+    *  `sometimes_na`: if set, then provide an N/A option when grading (with one of the radio types) that
+       sets weight of the option to 0 for this student
+    *  `allow_comment`: if set, allow specifying a comment for this item in the grading interface. This comment
+        is separate from a comment on the overall grade.
+
 
 
 ## `.autograde`

@@ -440,12 +440,31 @@ if (array_key_exists('no-regrade', $metadata) && array_key_exists($details['grou
     $regradable = $metadata['no-regrade'][$details['group']];
 
 // time category
-$status = ($now < $open) ? 'is not yet open' 
-        :( ($now < $due) ? 'is due ' . prettyTime($due)
-        :( ($now < $close) ? 'was due '.prettyTime($due)
-        :( 'has closed')));
-// time category css class
-$class = ((!$due || $open > $now) ? "pending" : ($due > $now ? "open" : ($close > $now ? "late" : "closed")));
+if (!$due && $now > $close) {
+    $status = 'has closed';
+    $class = 'pending';
+} else if (!$due) {
+    $status = 'is not available';
+    $class = 'pending';
+} else if ($now < $open) {
+    $status = 'is not yet open';
+    $class = 'pending';
+} else if ($now < $due) {
+    $status = 'is due ' . prettyTime($due);
+    $class = 'open';
+} else if ($now < $close) {
+    if (array_key_exists('past_due_message', $metadata)) {
+        $status = 'is due ' . prettyTime($due) . '; you may submit fixes until ' . prettyTime($close);
+    } else {
+        $status = $metadata['past_due_message'];
+        $status = str_replace("DUE_TIME", prettyTime($due), $status);
+        $status = str_replace("CLOSE_TIME", prettyTime($due), $status);
+    }
+    $class = 'late';
+} else {
+    $status = 'has closed';
+    $class = "closed";
+
 
 
 // display basic information

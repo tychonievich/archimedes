@@ -209,13 +209,17 @@ function percent_tree($details) {
         $hasmult ? $details['grade']['.mult']['ratio']*100 : '',
         $hasmult ? htmlspecialchars($details['grade']['.mult']['comments']) : ''
     );
-    $hassub = array_key_exists('grade', $details) && array_key_exists('.sub',$details['grade']);
-    $sub = percent_tag(
-        "$id|sub", 
-        "grade subtraction",
-        $hassub ? $details['grade']['.sub']['portion']*100 : '',
-        $hassub ? htmlspecialchars($details['grade']['.sub']['comments']) : ''
-    );
+    $hassub = array_key_exists('grade', $details) && array_key_exists('.sub', $details['grade']);
+    if ($hassub || (array_key_exists("grading_show_sub", $metadata) && $metadata['grading_show_sub'])) {
+        $sub = percent_tag(
+            "$id|sub", 
+            "grade subtraction",
+            $hassub ? $details['grade']['.sub']['portion']*100 : '',
+            $hassub ? htmlspecialchars($details['grade']['.sub']['comments']) : ''
+        );
+    } else {
+        $sub = "";
+    }
     return "
         <div class='percentage-outer' id='$id|outer'>
             $innertag
@@ -232,7 +236,7 @@ function hybrid_tree($details) {
         $ontime = round($details['ontime']['correctness'] * 100, 1) . '% correct when due';
         $late = round($details['autograde']['correctness'] * 100, 1) . '% correct eventually';
     } else if (array_key_exists('autograde', $details)) {
-        $ontime = ''; # FIXME round($details['autograde']['correctness'] * 100, 1) . '% correct';
+        $ontime = round($details['autograde']['correctness'] * 100, 1) . '% correct';
         $late = '';
     } else {
         $ontime = '';
