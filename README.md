@@ -153,6 +153,8 @@ The following keys, if present, also have defined meaning:
 
 -  `not-submittable-message`: if set, message to show on the index of assignments if this assignment has
     no `files` to submit. Default is "not submittable online".
+
+-  `link-description`: text to display on writeup link. Default is "Task description".
     
 ## `coursegrade.json`
 

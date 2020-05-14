@@ -472,8 +472,8 @@ echo "<h1>$slug – ";
 if (array_key_exists('title', $details)) echo $details['title'];
 echo "</h1>";
 
-if (array_key_exists('link_description', $details)) {
-    $link_description = $details['link_description'];
+if (array_key_exists('link-description', $details)) {
+    $link_description = $details['link-description'];
 } else {
     $link_description = 'Task description';
 }
