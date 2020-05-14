@@ -470,8 +470,12 @@ foreach($mine as $slug=>$details) {
             echo 'not submitted';
         else echo 'awaiting feedback';
     } else if ($class == 'pending') echo 'not yet open';
-    else if (!array_key_exists('files', $details)) echo 'submission handled elsewhere'; 
-    else if (!array_key_exists('.files', $details)) echo 'not yet submitted';
+    else if (!array_key_exists('files', $details)) {
+        if (!array_key_exists('not-submittable-message'))
+            echo 'not submittable online';
+        else
+            echo $details['not-submittable-message'];
+    } else if (!array_key_exists('.files', $details)) echo 'not yet submitted';
     else if (array_key_exists('autograde', $details)) {
         if ($class == 'late') {
             echo 'test cases available';
