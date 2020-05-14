@@ -453,10 +453,10 @@ if (!$due && $now > $close) {
     $status = 'is due ' . prettyTime($due);
     $class = 'open';
 } else if ($now < $close) {
-    if (array_key_exists('past_due_message', $metadata)) {
+    if (array_key_exists('past-due-message', $metadata)) {
         $status = 'is due ' . prettyTime($due) . '; you may submit fixes until ' . prettyTime($close);
     } else {
-        $status = $metadata['past_due_message'];
+        $status = $metadata['past-due-message'];
         $status = str_replace("DUE_TIME", prettyTime($due), $status);
         $status = str_replace("CLOSE_TIME", prettyTime($due), $status);
     }

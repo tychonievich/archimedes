@@ -149,7 +149,10 @@ The following keys, if present, also have defined meaning:
 
 -  `hide`: if set, don't show this assignment to students at all or use it for grade computations
 
--  `feedback_files`: list of glob patterns for files that should be considered feedback (e.g. autograder outputs)
+-  `feedback-files`: list of glob patterns for files that should be considered feedback (e.g. autograder outputs)
+
+-  `not-submittable-message`: if set, message to show on the index of assignments if this assignment has
+    no `files` to submit. Default is "not submittable online".
     
 ## `coursegrade.json`
 
@@ -215,11 +218,11 @@ You may optionally also include
 
 -   `no-queue`, an object with keys being assignment `group`s that should not be queued for automated feedback when submitted and values to display upon submission (not displayed if `""`).
 
--   `past_due_message`, message to display on past-due assignments on the submission page. `DUE_TIME` will
+-   `past-due-message`, message to display on past-due assignments on the submission page. `DUE_TIME` will
     be replaced with the assignment due time, and `CLOSE_TIME` with its closed time. Default is 
     `"is due DUE_TIME; you may subimit fixes until CLOSE_TIME"`.
 
--   `grading_show_sub`: if set, show an option in the grader to subtract an amount from the grade
+-   `grading-show-sub`: if set, show an option in the grader to subtract an amount from the grade
     as a special case adjustment
 
 ## Rubrics and `.grade`s

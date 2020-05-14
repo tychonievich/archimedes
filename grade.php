@@ -210,7 +210,7 @@ function percent_tree($details) {
         $hasmult ? htmlspecialchars($details['grade']['.mult']['comments']) : ''
     );
     $hassub = array_key_exists('grade', $details) && array_key_exists('.sub', $details['grade']);
-    if ($hassub || (array_key_exists("grading_show_sub", $metadata) && $metadata['grading_show_sub'])) {
+    if ($hassub || (array_key_exists("grading-show-sub", $metadata) && $metadata['grading-show-sub'])) {
         $sub = percent_tag(
             "$id|sub", 
             "grade subtraction",
