@@ -784,7 +784,7 @@ function asgn_details($student, $slug) {
         $t = filemtime($path);
         if ($t > $sentin) $sentin = $t;
     }
-    if (file_exists("uploads/$slug/$student/.latest")) {
+    if (array_key_exists('single-file', $details) && $details['single-file'] && file_exists("uploads/$slug/$student/.latest")) {
         $latest_lines = explode("\n",trim(file_get_contents("uploads/$slug/$student/.latest")));
         $details['.latest'] = $latest_lines[0];
         $details['.latest-subdir'] = $latest_lines[1];
