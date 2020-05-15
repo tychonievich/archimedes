@@ -229,6 +229,8 @@ You may optionally also include
 
 -   `show-late-estimate-on-submit`: if set to true, show an estimate of the late penalty a student receive on submission in addition to mentioning that their submission will be late.
 
+-   `show-score-before-adjustments`: if set to true, show the score of assignments before multiplication/etc. adjustments (including late penalties) in addition to the final score
+
 ## Rubrics and `.grade`s
 
 Rubrics are specified in JSON objects.

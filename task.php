@@ -226,6 +226,7 @@ if (array_key_exists('submitted', $_GET) && $_GET['submitted']) {
 
 
 function show_grade($gradeobj) {
+    global $metadata;
     if (!$gradeobj || !array_key_exists('kind', $gradeobj))
         return "<div class='xp-missed'>It appears the grade data on the server is malformed. Please visit Piazza, search to see if someone else has already reported this, and if not make an open question there identifying the task for which this message appeared.</div>";
     $ans = array();
@@ -279,10 +280,10 @@ function show_grade($gradeobj) {
     if (array_key_exists('comments', $gradeobj))
 	_show_grade_obj_row($ans, false, $gradeobj['comments']);
 
-    if ($gradeobj['kind'] == 'percentage') {
+    if (array_key_exists('show-score-before-adjustments', $metadata) && $metadata['show-score-before-adjustments']) {
 	_show_grade_obj_row($ans, $score, 'Score before adjustments', true);
     }
-    
+
     $ans[] = '<tr class="break"><td colspan="2"></td></tr>';
 
     // combined
