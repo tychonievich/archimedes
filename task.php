@@ -104,6 +104,7 @@ function accept_submission() {
         if (file_exists($linkdir . $name)) {
             rename($linkdir . $name, $linkdir . '.backup-' . $name);
         }
+        file_put($linkdir . '.latest', $fname . "\n" . $now);
         if (!link($realdir . $name, $linkdir . $name)) {
             user_error_msg("Received <tt>".htmlspecialchars($name)."</tt> but failed to put it into the right location to be tested (not sure why; please report this to your professor).");
             continue;
@@ -201,6 +202,8 @@ function roll_back() {
             if (file_exists("$dname/.autograde")) unlink("$dname/.autograde");
             if (file_exists("$dname/.grade")) unlink("$dname/.grade");
             link($_POST['make_live'], "$dname/$fname");
+            $stamp = substr(basename(dirname($_POST['make_live'])), 1);
+            file_put("$dname/.latest", $fname . "\n" .$stamp);
             ensure_file("meta/queued/$slug-$user", basename($dname));
             user_success_msg("roll-back completed: <tt>$dname/$fname</tt> now aliases <tt>$_POST[make_live]</tt>, any previous feedback has been removed, and the autograder has been queued to review <tt>meta/queued/$slug-$user</tt>.");
         }
@@ -223,86 +226,136 @@ if (array_key_exists('submitted', $_GET) && $_GET['submitted']) {
 
 
 function show_grade($gradeobj) {
+    global $metadata;
     if (!$gradeobj || !array_key_exists('kind', $gradeobj))
         return "<div class='xp-missed'>It appears the grade data on the server is malformed. Please visit Piazza, search to see if someone else has already reported this, and if not make an open question there identifying the task for which this message appeared.</div>";
-    if ($gradeobj['kind'] == 'percentage') return implode('',array(
-        "<div class='percentage'>",
-        round($gradeobj['ratio']*100, 3),
-        "%</div> <pre>",
-        htmlspecialchars($gradeobj['comments']),
-        "</pre>"
-    ));
     $ans = array();
-    $ans[] = '<table class="feedback"><tbody>';
+    if ($gradeobj['kind'] == 'percentage') {
+	$ans[] = '<table class="feedback"><tbody>';
+	$score = $gradeobj['ratio'];
+    } else {
+	$ans[] = '<table class="feedback"><tbody>';
 
-if ($_SERVER['PHP_AUTH_USER'] == 'lat7h' && false) {
-    preFeedback('');
-    var_dump($gradeobj);
-    leavePre();
-}
+	// correctness
+	if ($gradeobj['auto-weight'] > 0) {
+	    $score = $gradeobj['auto'];
+	    _show_grade_obj_row($ans, $score, "Functional correctness (as determined by test cases)", true);
+	    $lat = array_key_exists('auto-late', $gradeobj) ? $gradeobj['auto-late'] : $score;
+	    if ($lat > $score) {
+		_show_grade_obj_row($ans, $lat, "Late submission functional correctness (as determined by test cases)", true);
+		$pen = array_key_exists('late-penalty', $gradeobj) ? $gradeobj['late-penalty'] : 0.5;
+		$score = $score + ($lat-$score)*$pen;
+	    }
+	    $ans[] = '<tr class="break"><td colspan="2"></td></tr>';
+	} else { $score = 0; }
 
-    // correctness
-    if ($gradeobj['auto-weight'] > 0) {
-        $score = $gradeobj['auto'];
-        _show_grade_obj_row($ans, $score, "Functional correctness (as determined by test cases)", true);
-        $lat = array_key_exists('auto-late', $gradeobj) ? $gradeobj['auto-late'] : $score;
-        if ($lat > $score) {
-            _show_grade_obj_row($ans, $lat, "Late submission functional correctness (as determined by test cases)", true);
-            $pen = array_key_exists('late-penalty', $gradeobj) ? $gradeobj['late-penalty'] : 0.5;
-            $score = $score + ($lat-$score)*$pen;
-        }
-        $ans[] = '<tr class="break"><td colspan="2"></td></tr>';
-    } else { $score = 0; }
-
-    // staff feedback
-    $human = 0;
-    $human_denom = 0;
-    foreach($gradeobj['human'] as $entry) {
-        $r = $entry['ratio'];
-        $human += $entry['weight'] * $r;
-        $human_denom += $entry['weight'];
-        _show_grade_obj_row($ans, $r, $entry['name']);
+	// staff feedback
+	$human = 0;
+	$human_denom = 0;
+	foreach($gradeobj['human'] as $entry) {
+	    $r = $entry['ratio'];
+            if ($entry['weight'] == 0.0 && array_key_exists('sometimes_na', $entry)) {
+                continue;
+            }
+	    $human += $entry['weight'] * $r;
+	    $human_denom += $entry['weight'];
+            if ($entry['kind'] == 'points') {
+                _show_grade_obj_points($ans, $r, $entry['weight'], $entry['name']);
+            } else if ($entry['kind'] == 'comment') {
+            } else if (getShowPointsOption()) {
+                if ($entry['weight'] == 0) {
+                    _show_grade_obj_row($ans, $r, $entry['name'] . ' (not part of grade)');
+                } else {
+                    _show_grade_obj_row($ans, $r, $entry['name'] . ' (' . $entry['weight'] . ' points)');
+                }
+            } else {
+                _show_grade_obj_row($ans, $r, $entry['name']);
+            }
+            if (array_key_exists('comments', $entry) && strlen($entry['comments']) > 0) {
+                _show_grade_obj_row($ans, false, $entry['comments']);
+            }
+	}
     }
-
     // comment
     if (array_key_exists('comments', $gradeobj))
-        _show_grade_obj_row($ans, false, $gradeobj['comments']);
-    
+	_show_grade_obj_row($ans, false, $gradeobj['comments']);
+
+    if (array_key_exists('show-score-before-adjustments', $metadata) && $metadata['show-score-before-adjustments']) {
+	_show_grade_obj_row($ans, $score, 'Score before adjustments', true);
+    }
+
     $ans[] = '<tr class="break"><td colspan="2"></td></tr>';
 
     // combined
-    $aw = array_key_exists('auto-weight', $gradeobj) ? $gradeobj['auto-weight'] : 0.5;
-    $score = $human/$human_denom*(1-$aw) + $score*$aw;
-    if (array_key_exists('.mult', $gradeobj)) {
+    if ($gradeobj['kind'] == 'percentage') {
+    } else {
+	$aw = array_key_exists('auto-weight', $gradeobj) ? $gradeobj['auto-weight'] : 0.5;
+	$score = $human/$human_denom*(1-$aw) + $score*$aw;
+    }
+    if (array_key_exists('.sub', $gradeobj)) {
+        // (with subtraction)
+        _show_grade_obj_row($ans, $gradeobj['.sub']['portion'], $gradeobj['.sub']['comments'], true, '- ');
+        $score -= $gradeobj['.sub']['portion'];
+    }
+    if (array_key_exists('.mult', $gradeobj) && $score > 0.0) {
         // (with multiplier)
         _show_grade_obj_row($ans, $gradeobj['.mult']['ratio'], $gradeobj['.mult']['comments'], true, '× ');
         $score *= $gradeobj['.mult']['ratio'];
     }
-    if (array_key_exists('.adjustment', $gradeobj)) {
+    if (array_key_exists('.adjustment', $gradeobj) && $score > 0.0) {
         // (with multiplier)
         _show_grade_obj_row($ans, $gradeobj['.adjustment']['mult'], $gradeobj['.adjustment']['comments'], true, '× ');
         $score *= $gradeobj['.adjustment']['mult'];
     }
-    _show_grade_obj_row($ans, $score, 'Overall achievement', true);
+    _show_grade_obj_row($ans, $score, 'Overall score', true);
     
     $ans[] = '</tbody></table>';
     return implode('', $ans);
 }
+
+function _show_grade_obj_points(&$ans, $ratio, $weight, $comment) {
+    $ans[] = '<tr>';
+    $ans[] = '<td class="';
+    $ans[] = (($ratio >= 1) ? 'full' : ($ratio > 0 ? 'partial' : 'no'));
+    $ans[] = ' credit"';
+    $ans[] = '>';
+    $points = round($ratio * $weight, 1);
+    $of_points = round($weight, 1);
+    $ans[] = "$points / $of_points";
+    $ans[] = '</td>';
+    $ans[] = '<td style="white-space: pre-wrap">';
+    $ans[] = htmlspecialchars($comment);
+    $ans[] = '</td></tr>';
+}
 function _show_grade_obj_row(&$ans, $ratio, $comment, $percent=False, $prefix='') {
-        $ans[] = '<tr><td class="';
-        $ans[] = $ratio === FALSE ? '' : (($ratio >= 1) ? 'full' : ($ratio > 0 ? 'partial' : 'no'));
-        $ans[] = ' credit">';
-        $ans[] = $prefix;
-        if ($ratio === FALSE) {
-        } else if ($percent) {
+    $ans[] = '<tr>';
+    if ($ratio !== FALSE) {
+	$ans[] = '<td class="';
+	$ans[] = (($ratio >= 1) ? 'full' : ($ratio > 0 ? 'partial' : 'no'));
+	$ans[] = ' credit"';
+	$ans[] = '>';
+	$ans[] = $prefix;
+        if ($percent) {
             $ans[] = round($ratio*100, 1);
             $ans[] = '%';
         } else {
-            $ans[] = ($ratio >= 1) ? 'Yes!' : ($ratio > 0 ? 'Kind‑of' : 'No');
+            if ($ratio == 0.5) {
+                $ans[] = 'Kind-of (half credit)';
+            } else if ($ratio == 0.75) {
+                $ans[] = 'Kind-of (3/4ths credit)';
+            } else if ($ratio == 0.25) {
+                $ans[] = 'Kind-of (1/4ths credit)';
+            } else {
+                $ans[] = ($ratio >= 1) ? 'Yes!' : ($ratio > 0 ? 'Kind‑of' : 'No');
+            }
         }
-        $ans[] = '</td><td style="white-space: pre-wrap">';
-        $ans[] = htmlspecialchars($comment);
-        $ans[] = '</td></tr>';
+	$ans[] = '</td>';
+	$ans[] = '<td style="white-space: pre-wrap">';
+    } else {
+	$ans[] = '<td style="white-space: pre-wrap; text-align: left" colspan="2">';
+    }
+    $ans[] = htmlspecialchars($comment);
+    $ans[] = '</td></tr>';
 }
 
 
@@ -314,6 +367,7 @@ function grader_fb($details) {
     echo '</div></div>';
 }
 function testcase_fb($details) {
+    return;
     if (!array_key_exists('details', $details['autograde']))
         return "Test case listing not enabled for $details[slug]; showing preliminary feedback instead.\n".preliminary_fb($details);
     
@@ -380,7 +434,6 @@ $show_cases =  $due < $now
     && !array_key_exists('.ext-req', $details);
 $extendable = ($now < $due || !$submitted) 
     && array_key_exists('files', $details) 
-    && !array_key_exists('.files', $details) 
     && !(array_key_exists('no-extension', $metadata) && array_key_exists($details['group'], $metadata['no-extension']));
 
 $regradable = TRUE;
@@ -388,12 +441,31 @@ if (array_key_exists('no-regrade', $metadata) && array_key_exists($details['grou
     $regradable = $metadata['no-regrade'][$details['group']];
 
 // time category
-$status = ($now < $open) ? 'is not yet open' 
-        :( ($now < $due) ? 'is due ' . prettyTime($due)
-        :( ($now < $close) ? 'was due '.prettyTime($due).'; you may submit fixes until ' . prettyTime($close) 
-        :( 'has closed')));
-// time category css class
-$class = ((!$due || $open > $now) ? "pending" : ($due > $now ? "open" : ($close > $now ? "late" : "closed")));
+if (!$due && $now > $close) {
+    $status = 'has closed';
+    $class = 'pending';
+} else if (!$due) {
+    $status = 'is not available';
+    $class = 'pending';
+} else if ($now < $open) {
+    $status = 'is not yet open';
+    $class = 'pending';
+} else if ($now < $due) {
+    $status = 'is due ' . prettyTime($due);
+    $class = 'open';
+} else if ($now < $close) {
+    if (array_key_exists('past-due-message', $metadata)) {
+        $status = 'is due ' . prettyTime($due) . '; you may submit fixes until ' . prettyTime($close);
+    } else {
+        $status = $metadata['past-due-message'];
+        $status = str_replace("DUE_TIME", prettyTime($due), $status);
+        $status = str_replace("CLOSE_TIME", prettyTime($due), $status);
+    }
+    $class = 'late';
+} else {
+    $status = 'has closed';
+    $class = "closed";
+
 
 
 // display basic information
@@ -401,20 +473,29 @@ echo "<h1>$slug – ";
 if (array_key_exists('title', $details)) echo $details['title'];
 echo "</h1>";
 
-if (array_key_exists('link', $details))
+if (array_key_exists('link-description', $details)) {
+    $link_description = $details['link-description'];
+} else {
+    $link_description = 'Task description';
+}
+
+if (array_key_exists('describe_html', $details)) {
+    $html = $details['describe_html'];
+    echo "<p>$html</p>";
+} else if (array_key_exists('link', $details))
     if (substr($details['link'],0,2) == '//' || strpos($details['link'], '://') !== FALSE) {
-        echo "<p><a href='$details[link]'>Task description</a>.</p>";
+        echo "<p><a href='$details[link]'>$link_description</a>.</p>";
     } else {
-        echo "<p><a href='$metadata[writeup_prefix]$details[link]'>Task description</a>.</p>";
+        echo "<p><a href='$metadata[writeup_prefix]$details[link]'>$link_description</a>.</p>";
     }
 else if (array_key_exists('writeup', $details))
-    echo "<p><a href='$metadata[writeup_prefix]$details[writeup]'>Task description</a>.</p>";
+    echo "<p><a href='$metadata[writeup_prefix]$details[writeup]'>$link_description</a>.</p>";
 else if (array_key_exists('title', $details)) {
     echo "<p><a href='$metadata[writeup_prefix]";
     echo strtolower($slug);
     echo "-";
     echo strtolower($details['title']);
-    echo ".html'>Task description</a>.</p>";
+    echo ".html'>$link_description</a>.</p>";
 }
 echo "<p>Return to <a href='index.php$end'>Assignments list</a> or <a href='$metadata[url]'>main course page</a>.</p>";
 
@@ -426,30 +507,66 @@ function file_download_link($name, $path) {
     return "<a title='$name' href='download.php?file=$dl'>$name</a> $mtime";
 }
 
+function file_view_link($name, $path) {
+    $dl = rawurlencode(explode('/',$path,2)[1]);
+    $mtime = prettyTime(filemtime($path));
+    return "<a title='view $name' href='view.php?file=$dl'>(view)</a>";
+}
+
 
 // display submission status
 echo '<div class="submissions">';
 if ($submitted) {
-    echo "Your files (<a href='view.php?file=$slug/$user$ext'>view all</a>) (<a href='download.php?file=$slug/$user$ext'>download all as .zip</a>):<ul class='filelist'>";
-    foreach($details['.files'] as $name=>$path) {
-        echo "<li>";
-        echo file_download_link($name, $path);
-        echo "</li>";
+    if (array_key_exists('single-file', $details) && $details['single-file'] &&
+        array_key_exists('.latest', $details)) {
+        $files = $details['.files'];
+        echo "<p>Current submission: <ul class='filelist'><li>";
+        echo file_download_link(basename($details['.latest']), $files[$details['.latest']]);
+        echo "</li></ul>";
+        $feedback_count = 0;
+        if (array_key_exists('.feedback-files', $details) && !array_key_exists('withhold', $details)) {
+            $feedback_count = count($details['.feedback-files']);
+            echo "<p>Grader outputs: <ul class='filelist'>";
+            foreach($details['.feedback-files'] as $name=>$path) {
+                echo "<li>";
+                echo file_download_link($name, $path) . " " . file_view_link($name, $path);
+                echo "</li>";
+            }
+            echo "</ul>";
+        }
+        if (count($files) - $feedback_count > 1) {
+            echo "<p>Older submissions: <ul class='filelist'>";
+            foreach($files as $name=>$path) {
+                if (array_key_exists($name, $details['.feedback-files'])) continue;
+                if ($name == basename($details['.latest'])) continue;
+                echo "<li>";
+                echo file_download_link($name, $path);
+                echo "</li>";
+            }
+            echo "</ul>";
+        }
+    } else {
+        echo "Your files (<a href='view.php?file=$slug/$user$ext'>view all</a>) (<a href='download.php?file=$slug/$user$ext'>download all as .zip</a>):<ul class='filelist'>";
+        foreach($details['.files'] as $name=>$path) {
+            echo "<li>";
+            echo file_download_link($name, $path);
+            echo "</li>";
+        }
+        echo '</ul>';
     }
-    echo '</ul>';
 } else if (array_key_exists('files', $details)) {
     echo 'You have not yet submitted this assignment.';
 } else {
-    echo "<p>Online submissions are not enabled for this assignment.</p>";
 }
 echo '</div>';
 
 
 
 // display feedback
-if ((($close < $now) || ($isstaff && $isself))
+if ((($due < $now) || ($isstaff && $isself))
 && array_key_exists('grade', $details)
-&& !array_key_exists('.ext-req', $details)) {
+&& !array_key_exists('.ext-req', $details)
+&& !array_key_exists('withhold', $details)) {
     grader_fb($details);
 } else if (array_key_exists('.files', $details)) {
     if (($due < $now)
@@ -485,10 +602,23 @@ if ($submittable) {
         echo rosterEntry($user)['name'];
         echo " ($user)";
     }
-    if ($class == 'late')
-        echo ", though it is now late (see the course syllabus for details on what that means)";
+    if ($class == 'late') {
+	if (array_key_exists('show-late-estimate-on-submit', $metadata) && $metadata['show-late-estimate-on-submit'] && array_key_exists('late-policy', $details)) {
+	    $late_days = (time() - assignmentTime('due', $details) + 60) / (60 * 60 * 24);
+	    $late_days = floor($late_days);
+	    $late_days_p1 = $late_days + 1;
+	    $late_policy = $details['late-policy'];
+	    if ($late_days >= count($late_policy)) {
+		$late_days = count($late_policy) - 1;
+	    }
+	    $penalty = $late_policy[$late_days];
+	    $penalty_percent = floor($penalty * 100.0);
+	    echo ", though it is now late (estimated $penalty_percent% credit for $late_days_p1 day late submission)";
+	} else {
+	    echo ", though it is now late (see the course syllabus for what that means)";
+	}
+    }
     echo ":</p><center><input type='file' multiple='multiple' name='submission[]'/><input type='submit' name='upload' value='Upload file(s)'/></center></form>";
-    
 }
 
 
@@ -561,7 +691,8 @@ if ($isfaculty) {
                 $curr = fileinode("uploads/$slug/$user/".basename($f));
                 if ($orig !== FALSE && $orig == $curr) $live[] = basename($f);
                 else $dead[] = $f;
-            }
+	    }
+	    $orig_when = $when;
             $when = substr(basename($when),1);
             echo "<li>".prettyTime(DateTime::createFromFormat('Ymd-His',$when)->getTimestamp());
             if (count($dead)) {
@@ -574,6 +705,12 @@ if ($isfaculty) {
             }
             if (count($live)) {
                  echo " (current copy of <tt>".implode('</tt> and <tt>', $live)."</tt>)";
+                 echo " (click to make active version of ";
+                 foreach($live as $i=>$path) {
+                     if ($i != 0) echo " and ";
+                     echo "<button name='make_live' value='$orig_when/$path'>".basename($path)."</button>";
+                 }
+                 echo ")";
             }
             echo "</li>";
             

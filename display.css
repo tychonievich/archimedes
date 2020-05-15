@@ -106,6 +106,7 @@ div.grade + div { white-space: pre-wrap; }
 .check.correct, .full.credit, label.full { background-color:rgba(0,255,0,0.25); }
 .check.wrong, .no.credit, label.none { background-color:rgba(255,0,0,0.25); }
 .check.partial, .partial.credit, label.partial { background-color:rgba(255,255,0,0.25); }
+.check.na, .na.credit, label.na { background-color:rgba(100,100,100,0.25); }
 table.feedback tr td:first-child { text-align: center; }
 table.feedback tr td { border: rgba(0,0,0,0) 0.5ex solid; }
 table.feedback tr.break td { border: thin solid black; padding:0; }

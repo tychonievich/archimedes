@@ -18,6 +18,7 @@ if (!array_key_exists('Grading group', $metadata)) $metadata['Grading group'] = 
 /// The following array grants certain users access to the class even if you upload an empty roster or otherwise mess up the course setup. Feel free to add yourself to the set, but remove those it has now at your own risk.
 $superusers = array(
     'lat7h'=>array('name'=>'Luther Tychonievich', 'role'=>'Admin'),
+    'cr4bd'=>array('name'=>'Charles Reiss', 'role'=>'Admin'),
     'no TA'=>array('name'=>'no TA assigned', 'role'=>'Teaching Assistant'),
     'mst3k'=>array('name'=>'Mystery Theater', 'role'=>'Student', 'grader'=>'no TA'),
 );
@@ -66,18 +67,21 @@ function rosterEntry($id, $check=false) {
 }
 
 $_assignments = False;
+$_all_assignments = False;
+function _filter_hidden($entry) { return !array_key_exists("hide", $entry) || !$entry["hide"]; }
 /// Helper function to read the set of assignments (needed in almost every view)
-function assignments() {
-    global $_assignments, $metadata;
+function assignments($showhidden=false) {
+    global $_assignments, $_all_assignments, $metadata;
     if ($_assignments === False) {
-        $_assignments = json_decode(file_get_contents("meta/assignments.json"), true);
-        foreach($_assignments as $k=>$v) {
+        $_all_assignments = json_decode(file_get_contents("meta/assignments.json"), true);
+        foreach($_all_assignments as $k=>$v) {
             if (!array_key_exists('fbdelay', $v)) {
-                $_assignments[$k]['fbdelay'] = array_key_exists('fbdelay', $metadata) ? $metadata['fbdelay'] : 2;
+                $_all_assignments[$k]['fbdelay'] = array_key_exists('fbdelay', $metadata) ? $metadata['fbdelay'] : 2;
             }
         }
+        $_assignments = array_filter($_all_assignments, _filter_hidden);
     }
-    return $_assignments;
+    return $showhidden ? $_all_assignments : $_assignments;
 }
 
 $_coursegrade = False;
@@ -203,14 +207,15 @@ function updateRosterSpreadsheet($uploadrecord, $remove=False, $keepWaiters=True
     $reader = new SpreadsheetReader($uploadrecord['tmp_name'], $uploadrecord['name'], $uploadrecord['type']);
     foreach($reader->Sheets() as $idx => $name) {
         $reader->ChangeSheet($idx);
-        
         // for some strange reason, Collab exports a roster with several sub-sheets inside each sheet.
         // each has a single title row with just one element, a blank row, and then the header and contents
         // since spreadsheet-reader skips empty lines in xlsx, we look for <= 1
         $blank = true;
-        $header = array();
+	$header = array();
 
-        foreach ($reader as $row) {
+	$reader->rewind();
+
+	foreach ($reader as $row) {
             if (count($row) <= 1) { $blank = true; }
             else if ($blank) {
                 $header = array();
@@ -589,7 +594,7 @@ function rubricOf($slug) {
     if (array_key_exists($slug, $aset) && array_key_exists('rubric', $aset[$slug]))
         $rubric = $aset[$slug]['rubric'];
     else if (file_exists("uploads/$slug/.rubric"))
-        $rubric = json_decode(file_get_contents("uploads/$slug/.rubric"), true);
+	$rubric = json_decode(file_get_contents("uploads/$slug/.rubric"), true);
     else if (file_exists("uploads/.rubric"))
         $rubric = json_decode(file_get_contents("uploads/.rubric"), true);
     else if (file_exists("meta/rubric.json"))
@@ -599,6 +604,15 @@ function rubricOf($slug) {
     
     $_rubs[$slug] = $rubric;
     return $rubric;
+}
+
+function getShowPointsOption() {
+    global $metadata;
+    if (array_key_exists('show_points', $metadata)) {
+        return $metadata['show_points'];
+    } else {
+        return false;
+    }
 }
 
 
@@ -620,7 +634,7 @@ function studentFileTag($path, $classes='left') {
         if (stripos($mime, 'image') !== FALSE) {
             return "<a href='$link' target='_blank'><img class='$classes width height' src='$link'/></a><br/><input type='button' value='toggle image visibility' onclick='e=this.previousSibling.previousSibling; e.setAttribute(\"style\", e.getAttribute(\"style\") ? \"\" : \"display:none\")'/>";
             //  return "<a href='$link' target='_blank'><img class='$classes width height' src='$link'/></a>";
-        } else if (stripos($mime, 'text') !== FALSE) {
+        } else if (stripos($mime, 'text') !== FALSE && filesize($path) < 1 * 1024 * 1024) {
             $contents = file_get_contents($path);
             $contents = preg_replace('/[^\n\r \t!-~]/', '', $contents);
             return "<div class='$classes width'>File <a href='$link' target='_blank'><tt>$title</tt></a>: <input type='button' style='font-family:monospace' value='toggle visibility' onclick='e=this.nextSibling; e.setAttribute(\"style\", e.getAttribute(\"style\") ? \"\" : \"display:none\")'/><pre><code>" . htmlspecialchars($contents) . "</code></pre></div>";
@@ -699,6 +713,7 @@ function svg_progress_bar($ep, $fp, $mp) {
  * - rubric (result of rubricOf)
  */
 function asgn_details($student, $slug) {
+    global $isstaff;
     $nopoints = array(
         'correctness' => 0,
         'feedback' => 'Did not submit',
@@ -718,8 +733,10 @@ function asgn_details($student, $slug) {
         $details['excused'] = TRUE;
         $details['weight'] = 0;
     }
-    if (file_exists("uploads/$slug/$student/.grade"))
+    if ((!array_key_exists('withhold',$details) || $isstaff) && file_exists("uploads/$slug/$student/.grade"))
         $details['grade'] = json_decode(file_get_contents("uploads/$slug/$student/.grade"), TRUE);
+    if (file_exists("uploads/$slug/$student/.gradetemplate"))
+	$details['grade_template'] = json_decode(file_get_contents("uploads/$slug/$student/.gradetemplate"), TRUE);
     if (file_exists("uploads/$slug/$student/.autograde")) {
         $details['autograde'] = json_decode(file_get_contents("uploads/$slug/$student/.autograde"), TRUE);
         $details['autograde']['created'] = filemtime("uploads/$slug/$student/.autograde");
@@ -732,10 +749,6 @@ function asgn_details($student, $slug) {
         $details['autograde'] = array(
             'feedback'=> $afb['stdout'],
             'created' => filemtime("uploads/$slug/$student/.autofeedback"),
-        );
-    } else if (count(glob("uploads/$slug/$student/*")) > 0) {
-        $details['autograde'] = array(
-            'feedback'=> "no automated tests",
         );
     } else if (closeTime($details) < time()) {
         $details['autograde'] = $nopoints;
@@ -761,19 +774,74 @@ function asgn_details($student, $slug) {
     // add submission time
     $sentin = 0;
     foreach(glob("uploads/$slug/$student/*") as $path) {
-        $finfo = new finfo(FILEINFO_MIME);
-        $mime = $finfo->file($path);
-        if (stripos($mime, 'image') !== FALSE) { continue; }
+        $feedback = 0;
+        if (array_key_exists('feedback-files', $details)) {
+            foreach($details['feedback-files'] as $pattern) {
+                if (fnmatch($pattern, basename($path), FNM_PERIOD)) $feedback = 1;
+            }
+        }
+        if ($feedback) continue;
         $t = filemtime($path);
         if ($t > $sentin) $sentin = $t;
     }
+    if (array_key_exists('single-file', $details) && $details['single-file'] && file_exists("uploads/$slug/$student/.latest")) {
+        $latest_lines = explode("\n",trim(file_get_contents("uploads/$slug/$student/.latest")));
+        $details['.latest'] = $latest_lines[0];
+        $details['.latest-subdir'] = $latest_lines[1];
+        foreach (glob("uploads/$slug/$student/." . $details['.latest-subdir'] . "/*") as $path) {
+            if (array_key_exists('feedback-files', $details)) {
+                foreach($details['feedback-files'] as $pattern) {
+                    if (fnmatch($pattern, basename($path), FNM_PERIOD)) $feedback = 1;
+                }
+            }
+            if ($feedback) continue;
+            $sentin = filemtime($path);
+        }
+    }
     $details['submitted'] = $sentin;
+    $late_days = ($sentin - assignmentTime('due', $details)) / (60 * 60 * 24);
+    $details['submitted-late-days'] = $late_days;
+    if ($late_days > 0 && array_key_exists('late-policy', $details)) {
+	$late_policy = $details['late-policy'];
+        if (count($late_policy) > 0) {
+            $late_days = floor($late_days);
+            $late_days_p1 = $late_days + 1;
+            if ($late_days >= count($late_policy)) {
+                $late_days = count($late_policy) - 1;
+            }
+            $details['policy-late-penalty'] = $late_policy[$late_days];
+            if (array_key_exists('grade', $details)) {
+                if (array_key_exists('.adjustment', $details['grade'])) {
+                    $details['grade']['.adjustment'] = array(
+                        'kind' => 'percentage',
+                        'mult' => $details['policy-late-penalty'] * $details['grade']['.adjustment']['mult'], # FIXME: duplicated
+                        'comments' => $details['grade']['.adjustment']['comments'] . " and $late_days_p1 days late",
+                    );
+                } else {
+                    $details['grade']['.adjustment'] = array(
+                        'kind' => 'percentage',
+                        'mult' => $details['policy-late-penalty'], # FIXME: duplicated?
+                        'comments' => "$late_days_p1 days late",
+                    );
+                }
+            }
+        }
+    }
 
     // add download links for current submissions
     $files = array();
+    $feedback_files = array();
     foreach(glob("uploads/$slug/$student/*") as $path) {
         $files[basename($path)] = $path;
+        if (array_key_exists('feedback-files', $details)) {
+            foreach($details['feedback-files'] as $pattern) {
+                if (fnmatch($pattern, basename($path), FNM_PERIOD)) {
+                    $feedback_files[basename($path)] = $path;
+                }
+            }
+        }
     }
+
     if (array_key_exists('extends', $details)) {
         foreach($details['extends'] as $slug2) {
             foreach(glob("uploads/$slug2/$student/*") as $path) {
@@ -786,6 +854,10 @@ function asgn_details($student, $slug) {
     natcasesort($files);
     if (count($files) > 0)
         $details['.files'] = $files;
+
+    if (count($feedback_files) > 0)
+        $details['.feedback-files'] = $feedback_files;
+
     
     // add lists of partners
     $partners = array();
@@ -910,7 +982,7 @@ function cumulative_status($student, &$progress=False, &$projected_score=False) 
         }
         
         // handle future tasks
-        if ($future || !array_key_exists('grade', $details)) {
+        if (!array_key_exists('grade', $details)) {
             $gcode[] = 'future';
             $ans[$details['group']]['future'] += $details['weight'];
             $details['.gcode'] = $gcode;
@@ -918,7 +990,7 @@ function cumulative_status($student, &$progress=False, &$projected_score=False) 
         }
         
         // record submission
-        $earned = score_of_task($details['grade']);
+        $earned = score_of_task($details);
         $details['.score'] = $earned;
         $ans[$details['group']]['past'][] = array('slug'=>$slug, 'got'=>$earned*$details['weight'], 'of'=>$details['weight']);
         $gcode[] = 'graded';
@@ -1010,9 +1082,25 @@ function cumulative_status($student, &$progress=False, &$projected_score=False) 
 
  */
 
-function score_of_task($gradeobj) {
+function score_of_task($details) {
+    $gradeobj = $details['grade'];
     if (!$gradeobj || !array_key_exists('kind', $gradeobj)) return NAN;
-    if ($gradeobj['kind'] == 'percentage') return $gradeobj['ratio'];
+    if ($gradeobj['kind'] == 'percentage') {
+	$score = $gradeobj['ratio'];
+	if (array_key_exists('.mult', $gradeobj) && $score > 0.0) {
+	    // (with multiplier)
+	    $score *= $gradeobj['.mult']['ratio'];
+	}
+	if (array_key_exists('.adjustment', $gradeobj) && $score > 0.0) {
+	    // (with multiplier)
+	    $score *= $gradeobj['.adjustment']['mult'];
+	}
+        if (array_key_exists('.sub', $gradeobj)) {
+            // (with subtraction)
+            $score -= $gradeobj['.sub']['portion'];
+        }
+	return $score;
+    }
 
     // correctness
     $score = $gradeobj['auto'];
@@ -1039,11 +1127,15 @@ function score_of_task($gradeobj) {
     // combined
     $aw = array_key_exists('auto-weight', $gradeobj) ? $gradeobj['auto-weight'] : 0.5;
     $score = ($human_denom > 0 ? $human/$human_denom*(1-$aw) : 0) + $score*$aw;
-    if (array_key_exists('.mult', $gradeobj)) {
+    if (array_key_exists('.sub', $gradeobj)) {
+        // (with subtraction)
+        $score -= $gradeobj['.sub']['portion'];
+    }
+    if (array_key_exists('.mult', $gradeobj) && $score > 0.0) {
         // (with multiplier)
         $score *= $gradeobj['.mult']['ratio'];
     }
-    if (array_key_exists('.adjustment', $gradeobj)) {
+    if (array_key_exists('.adjustment', $gradeobj) && $score > 0.0) {
         // (with multiplier)
         $score *= $gradeobj['.adjustment']['mult'];
     }

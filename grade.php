@@ -9,7 +9,7 @@ if (!$isstaff) die("page restricted to staff");
 $issuperuser = array_key_exists('supergraders', $metadata) 
     && in_array($user, $metadata['supergraders']);
 
-if (array_key_exists('addgrade', $_REQUEST)) {
+if (array_key_exists('addgrade', $_REQUEST) || array_key_exists('respondtoregrade', $_REQUEST)) {
     // retrieve and validate message
     $grade = json_decode(file_get_contents("php://input"), true);
     if (!$grade) die ("invalid JSON payload received");
@@ -40,44 +40,68 @@ if (array_key_exists('addgrade', $_REQUEST)) {
         unset($grade['regrade']);
         file_put($chatfile, json_encode($chatter)) || die('failed to record decision (may be server permission error?)');
     }
-    
-    $rub = rubricOf($grade['slug']);
-    if ($rub['kind'] != $grade['kind']) die("expected '$rub[kind]' (not '$grade[kind]') for $grade[slug]");
-    if ($grade['kind'] == 'hybrid') {
-        // add rubric details
-        $grade['auto-weight'] = $rub['auto-weight'];
-        $grade['late-penalty'] = $rub['late-penalty'];
-        // and computed values
+    if (array_key_exists('addgrade', $_REQUEST)) {
         $details = asgn_details($grade['student'], $grade['slug']);
-        if (array_key_exists('ontime', $details)) {
-            $grade['auto-late'] = $details['autograde']['correctness'];
-            $grade['auto'] = $details['ontime']['correctness'];
-        } else if (array_key_exists('autograde', $details)) {
-            $grade['auto'] = $details['autograde']['correctness'];
-        } else {
-            $grade['auto'] = 0;
+        # preserve hidden information
+        if (array_key_exists('grade', $details)) {
+            foreach ($details['grade'] as $k => $v) {
+                # FIXME: hack
+                if ($k == '.adjustment') { continue; }
+                if (!array_key_exists($k, $grade)) {
+                    $grade[$k] = $v;
+                }
+            }
         }
         
-        // and weights
-        if (count($grade['human']) != count($rub['human'])) die('wrong number of entries in human grading');
-        foreach($rub['human'] as $i=>$val) {
-            if (!is_array($val)) $val = array('weight'=>1, 'name'=>$val);
-            if ($grade['human'][$i]['name'] != $val['name']) die('rubric has changed');
-            $grade['human'][$i]['weight'] = $val['weight'];
+        $rub = rubricOf($grade['slug']);
+        if ($rub['kind'] != $grade['kind']) die("expected '$rub[kind]' (not '$grade[kind]') for $grade[slug]");
+        if ($grade['kind'] == 'hybrid') {
+		// add rubric details
+            $grade['auto-weight'] = $rub['auto-weight'];
+            $grade['late-penalty'] = $rub['late-penalty'];
+            // and computed values
+            if (array_key_exists('ontime', $details)) {
+                $grade['auto-late'] = $details['autograde']['correctness'];
+                $grade['auto'] = $details['ontime']['correctness'];
+            } else if (array_key_exists('autograde', $details)) {
+                $grade['auto'] = $details['autograde']['correctness'];
+            } else {
+                $grade['auto'] = 0;
+            }
+            
+            // and weights
+            if (count($grade['human']) != count($rub['human'])) die('wrong number of entries in human grading');
+            foreach($rub['human'] as $i=>$val) {
+                if (!is_array($val)) $val = array('weight'=>1, 'key'=>$val, 'name'=>$val);
+                if (array_key_exists('key', $grade['human'][$i])) {
+                    if ($grade['human'][$i]['key'] != $val['key']) die('rubric has changed');
+                } else {
+                    if ($grade['human'][$i]['name'] != $val['name']) die('rubric has changed');
+                }
+                if (!array_key_exists('weight', $grade['human'][$i])) {
+                    $grade['human'][$i]['weight'] = $val['weight'];
+                }
+                if (array_key_exists('kind', $val)) {
+                    $grade['human'][$i]['kind'] = $val['kind'];
+                }
+                if (array_key_exists('key', $val)) {
+                    $grade['human'][$i]['key'] = $val['key'];
+                }
+            }
         }
-    }
-    
-    // post to uploads/assignment/.gradelog and uploads/assignment/student/.grade
-    $payload = json_encode($grade);
-    file_put("uploads/$grade[slug]/$grade[student]/.grade", $payload)  || die('failed to record grade (may be server permission error?)');
-    file_append("users/.graded/$user/$grade[slug]", "$grade[student]\n");
-    if (file_exists("uploads/$grade[slug]/$grade[student]/.partners")) {
-        foreach(explode("\n",file_get_contents("uploads/$grade[slug]/$grade[student]/.partners")) as $pair) {
-            file_put("uploads/$grade[slug]/$pair/.grade", $payload);
-            file_append("users/.graded/$user/$grade[slug]", "$pair\n");
+        
+        // post to uploads/assignment/.gradelog and uploads/assignment/student/.grade
+        $payload = json_encode($grade);
+        file_put("uploads/$grade[slug]/$grade[student]/.grade", $payload)  || die('failed to record grade (may be server permission error?)');
+        file_append("users/.graded/$user/$grade[slug]", "$grade[student]\n");
+        if (file_exists("uploads/$grade[slug]/$grade[student]/.partners")) {
+            foreach(explode("\n",file_get_contents("uploads/$grade[slug]/$grade[student]/.partners")) as $pair) {
+                file_put("uploads/$grade[slug]/$pair/.grade", $payload);
+                file_append("users/.graded/$user/$grade[slug]", "$pair\n");
+            }
         }
+        file_append("uploads/$grade[slug]/.gradelog", "$payload\n");
     }
-    file_append("uploads/$grade[slug]/.gradelog", "$payload\n");
 
     // inform invoking method of success
     die(json_encode(array("success"=>True,"slug"=>$grade['slug'],"student"=>$grade['student'])));
@@ -94,20 +118,82 @@ function percent_tag($id, $text, $percent, $comment) {
     </div>";
 }
 
-function item_tag($id, $name, $select=False) {
-    if ($select !== False) {
-        $sf = $select == 1.0 ? "checked='checked' " : "";
-        $sp = $select == 0.5 ? "checked='checked' " : "";
-        $sn = $select == 0.0 ? "checked='checked' " : "";
-    } else {
-        $sf = ''; $sp = ''; $sn = '';
+function item_tag($id, $rubric, $selected, $weight, $comment) {
+    $key = htmlspecialchars($rubric["key"]);
+    $name = htmlspecialchars($rubric["name"]);
+    $rubric_weight = $rubric["weight"];
+    $kind = "radio3";
+    if (array_key_exists("kind", $rubric)) {
+        $kind = $rubric["kind"];
     }
-    return "<div class='item'>
-        <label class='full'><input type='radio' name='$id' value='1.0' $sf/>1</label>
-        <label class='partial'><input type='radio' name='$id' value='0.5' $sp/>½</label>
-        <label class='none'><input type='radio' name='$id' value='0.0' $sn/>0</label>
-        <span class='label'>$name</span>
-    </div>";
+    $data = "data-key='$key' data-name='$name' name='$id' data-weight='$weight' data-current-weight='$weight' data-current-selected='$selected'";
+    if ($kind == "comment") {
+        $result = "<div class='item'>
+            <label for='$id'>$name</label>:
+            </div>
+        ";
+        $result .= "
+            <div class='itemcomment'><label for='$id|comment'>Standalone comment:</label>
+            <textarea $data data-is-item-comment='yes' id='$id|comment'>$comments</textarea>
+            </div>
+        ";
+        return $result;
+    } else if ($kind == "points") { 
+        if ($selected !== False) {
+            $value = $selected * $weight;
+        } else {
+            $value = "";
+        }
+        $result = "<div class='item'>
+            <label for='$id'>$name</label>: <input type='text' $data data-points-of='$rubric_weight' value='$value'> of $rubric_weight
+        ";
+        $result .= "</div>";
+        if (array_key_exists('allow_comment', $rubric)) {
+            $result .= "
+                <div class='itemcomment'><label for='$id|comment'>Item comment:</label>
+                <textarea $data data-is-item-comment='yes' id='$id|comment'>$comment</textarea>
+                </div>
+            ";
+        }
+        return $result;
+    } else {
+        if ($kind == "radio5") {
+            $options = [[1.0, "1"], [0.75, "¾"], [0.5, "½"], [0.25, "¼"], [0.0, "0"]];
+        } else {
+            $options = [[1.0, "1"], [0.5, "½"], [0.0, "0"]];
+        }
+        $result = "<div class='item'>";
+        $sometimes_na = array_key_exists('sometimes_na', $rubric) && $rubric['sometimes_na'];
+        foreach ($options as $option) {
+            $cur_selected = ($selected == $option[0]);
+            if ($cur_selected) {
+                $checked = "checked='checked' ";
+            } else {
+                $checked = "";
+            }
+            $cur_class = "partial";
+            if ($option[0] == 1.0) {
+                $cur_class = "full";
+            } else if ($option[0] == 0.0) {
+                $cur_class = "none";
+            }
+            $cur_text = $option[1];
+            $result.= "<label class='$cur_class'><input type='radio' $data value='$option[0]' $checked>$cur_text</label>\n";
+        }
+        if ($sometimes_na !== False) {
+            $cur_checked = '';
+            if ($weight == 0.0) {
+                $cur_checked = "checked='checked' ";
+            }
+            $result .= "<label class='na'><input type='radio' $data value='N/A' $cur_checked>N/A</label>";
+        }
+        $result .= "
+            <span class='label'>$name</span>
+        ";
+        $result .="
+        </div>";
+        return $result;
+    }
 }
 
 function percent_tree($details) {
@@ -115,7 +201,32 @@ function percent_tree($details) {
     $text = 'correct';
     $ratio = array_key_exists('grade', $details) ? $details['grade']['ratio']*100 : '';
     $comment = array_key_exists('grade', $details) ? htmlspecialchars($details['grade']['comments']) : '';
-    return percent_tag($id, $text, $ratio, $comment);
+    $innertag = percent_tag($id, $text, $ratio, $comment);
+    $hasmult = array_key_exists('grade', $details) && array_key_exists('.mult',$details['grade']);
+    $mult = percent_tag(
+        "$id|mult", 
+        "grade multiplier (e.g., for hard-coding, other prohibited activity)",
+        $hasmult ? $details['grade']['.mult']['ratio']*100 : '',
+        $hasmult ? htmlspecialchars($details['grade']['.mult']['comments']) : ''
+    );
+    $hassub = array_key_exists('grade', $details) && array_key_exists('.sub', $details['grade']);
+    if ($hassub || (array_key_exists("grading-show-sub", $metadata) && $metadata['grading-show-sub'])) {
+        $sub = percent_tag(
+            "$id|sub", 
+            "grade subtraction",
+            $hassub ? $details['grade']['.sub']['portion']*100 : '',
+            $hassub ? htmlspecialchars($details['grade']['.sub']['comments']) : ''
+        );
+    } else {
+        $sub = "";
+    }
+    return "
+        <div class='percentage-outer' id='$id|outer'>
+            $innertag
+            $sub
+            $mult
+        </div>
+    ";
 }
 
 function hybrid_tree($details) {
@@ -131,17 +242,36 @@ function hybrid_tree($details) {
         $ontime = '';
         $late = '';
     }
+    $ontime = ''; # FIXME
+    $late = '';
     
     $items = array();
-    foreach($details['rubric']['human'] as $i=>$name) {
-        if (is_array($name)) $name = $name['name'];
+    if (!array_key_exists('grade', $details) && array_key_exists('grade_template', $details)) {
+	$details['grade'] = $details['grade_template'];
+    }
+    foreach($details['rubric']['human'] as $i=>$item) {
+        $sometimes_na = False;
+        $prompt_points = False;
+        if (!is_array($item)) {
+            $item = array('name' => $item, 'key' => $item, 'weight' => 1.0, 'kind' => 'radio');
+        }
+        if (!array_key_exists($item, 'key')) {
+            $item['key'] = $item['name'];
+        }
         if (array_key_exists('grade', $details)
         && array_key_exists('human', $details['grade'])
         && array_key_exists($i, $details['grade']['human'])
-        && ($details['grade']['human'][$i]['name'] == $name))
-            $select = $details['grade']['human'][$i]['ratio'];
-        else $select = False;
-        $items[] = item_tag("$id|$i", htmlspecialchars($name), $select);
+       	&& ($details['grade']['human'][$i]['key'] == $item['key'] || $details['grade']['human'][$i]['name'] == $item['name'])
+	) {
+	    $select = $details['grade']['human'][$i]['ratio'];
+	    $weight = $details['grade']['human'][$i]['weight'];
+            $comment = $details['grade']['human'][$i]['comments'];
+	} else {
+            $select = False;
+            $weight = $item['weight'];
+            $comment = '';
+        }
+        $items[] =  item_tag("$id|$i", $item, $select, $weight, $comment);
     }
     $items = implode("\n            ", $items);
     
@@ -153,6 +283,13 @@ function hybrid_tree($details) {
         $hasmult ? htmlspecialchars($details['grade']['.mult']['comments']) : ''
     );
     
+    $hassub = array_key_exists('grade', $details) && array_key_exists('.sub',$details['grade']);
+    $sub = percent_tag(
+        "$id|sub", 
+        "grade subtraction",
+        $hassub ? $details['grade']['.sub']['portion']*100 : '',
+        $hassub ? htmlspecialchars($details['grade']['.sub']['comments']) : ''
+    );
     $comment = (array_key_exists('grade', $details) && array_key_exists('comments', $details['grade'])) ? htmlspecialchars($details['grade']['comments']) : '';
     
     // FIXME: there is currently no way to handle .adjustment files from this interface
@@ -166,6 +303,9 @@ function hybrid_tree($details) {
         <div class='comment'><span>Comment:</span><textarea id='$id|comment'>$comment</textarea></div>
         <div class='hide-outer hidden'><strong class='hide-header'>Multiplier (for special cases)</strong><div class='hide-inner'>
         $mult
+        </div></div>
+        <div class='hide-outer hidden'><strong class='hide-header'>Subtraction (for special cases)</strong><div class='hide-inner'>
+        $sub
         </div></div>
     </div>";
 }
@@ -219,6 +359,7 @@ function student_screen($slug, $student, $nof='') {
             $rg[] = "</pre>";
             $rg[] = "<strong>Response:</strong><textarea class='regrade-response' id='$slug|$student|regrade'></textarea>";
         }
+        $rg[] = "<input type='button' value='respond without regrading' onclick='respond_to_regrade(" . json_encode("$slug|$student") . ")'>";
         $rg[] = "</div>";
         if ($keep) $rg = implode('', $rg);
         else $rg = '';
@@ -365,7 +506,7 @@ function _grade(id) {
         { element.classList.add('error'); throw new Error('Missing percentage'); }
         
         val = Number(val);
-        if (val < 0 || val > 0 && val <= 1 || val > 100)
+        if (val < 0 || val > 0 && val <= 1)
         { element.classList.add('error'); throw new Error('Invalid percentage'); }
         
         if (com.length < 4)
@@ -374,7 +515,8 @@ function _grade(id) {
         element.classList.remove('error');
         return val;
     }
-    
+
+    var ans = {};
     if (root.classList.contains('percentage')) {
         var correct = document.getElementById(id+'|percent').value;
         var comment = document.getElementById(id+'|comment').value;
@@ -382,22 +524,51 @@ function _grade(id) {
         correct = check_percent(correct, comment, root);
         root.classList.remove('error');
 
-        return {"kind":"percentage"
+        ans = {"kind":"percentage"
                ,"ratio":correct/100
                ,"comments":comment
                };
     } else if (root.classList.contains('hybrid')) {
-        var ans = {kind:'hybrid', human:[]};
+        ans = {kind:'hybrid', human:[]};
 
         document.getElementById(id).querySelectorAll('input[type="radio"]').forEach(function(x){
             var key = x.parentElement.parentElement.lastElementChild.innerHTML;
             var num = x.name.split('|');
             num = Number(num[num.length-1]);
-            if (num >= ans.human.length) ans.human.push(null);
+            while (num >= ans.human.length) ans.human.push(null);
             if (x.checked) {
-                ans.human[num] = {ratio:Number(x.value), name:key};
+                if (x.value == "N/A") {
+                    console.log("found na for " + num);
+                    ans.human[num] = {ratio:0.0, weight:0.0, name:key};
+                } else {
+                    console.log("found " + x.value + " for " + num);
+                    ans.human[num] = {ratio:Number(x.value), name:key};
+                }
                 x.parentElement.parentElement.classList.remove('error');
             }
+        });
+        document.getElementById(id).querySelectorAll('input[data-points-of]').forEach(function(x){
+            console.log('processing ' + x + ": " + x.dataset.pointsOf);
+            var num = x.name.split('|');
+            var key = x.dataset.key;
+            var name = x.dataset.name;
+            num = Number(num[num.length-1]);
+            while (num >= ans.human.length) ans.human.push(null);
+            var value = parseFloat(x.value) / parseFloat(x.dataset.pointsOf);
+            ans.human[num] = {name:name, ratio:value};
+            x.parentElement.parentElement.classList.remove('error');
+        });
+        document.getElementById(id).querySelectorAll('textarea[data-is-item-comment]').forEach(function(x){
+            var num = x.name.split('|');
+            var key = x.dataset.key;
+            var name = x.dataset.name;
+            num = Number(num[num.length-1]);
+            while (num >= ans.human.length) ans.human.push(null);
+            if (ans.human[num] == null) {
+                ans.human[num] = {name: name, weight: 0}
+            }
+            ans.human[num]['comments'] = x.value;
+            x.parentElement.parentElement.classList.remove('error');
         });
         var ok = true
         for(var i=0; i<ans.human.length; i+=1) if (ans.human[i] === null) {
@@ -408,21 +579,28 @@ function _grade(id) {
 
         var comment = document.getElementById(id+'|comment').value;
         if (comment.length > 0) ans['comments'] = comment;
-
-        var mult_correct = document.getElementById(id+'|mult|percent').value;
-        var mult_comment = document.getElementById(id+'|mult|comment').value;
-        if (mult_correct.length > 0) {
-            mult_correct = check_percent(mult_correct, mult_comment, document.getElementById(id+'|mult'));
-            ans['.mult'] = {"kind":"percentage"
-                           ,"ratio":mult_correct/100
-                           ,"comments":mult_comment
-                           };
-        }
-        
-        return ans;
     } else {
         alert('Grader script error: unexpected rubric kind '+JSON.stringify(root.classList));
     }
+    var mult_correct = document.getElementById(id+'|mult|percent').value;
+    var mult_comment = document.getElementById(id+'|mult|comment').value;
+    if (mult_correct.length > 0) {
+        mult_correct = check_percent(mult_correct, mult_comment, document.getElementById(id+'|mult'));
+        ans['.mult'] = {"kind":"percentage"
+                       ,"ratio":mult_correct/100
+                       ,"comments":mult_comment
+                       };
+    }
+    var sub_correct = document.getElementById(id+'|sub|percent').value;
+    var sub_comment = document.getElementById(id+'|sub|comment').value;
+    if (sub_correct.length > 0) {
+        sub_correct = check_percent(sub_correct, sub_comment, document.getElementById(id+'|sub'));
+        ans['.sub'] = {"kind":"percentage"
+                       ,"portion":sub_correct/100
+                       ,"comments":sub_comment
+                       };
+    }
+    return ans;
 }
 
 /** Callback for the "submit grade" button: tell the server, hide the student, and ask for new comments */
@@ -443,6 +621,26 @@ function grade(id) {
     }
 
     ajax(ans, 'addgrade=1&asuser=<?=$user?>'); // FIX ME: add checking of response code
+    document.getElementById("table|"+id).classList.add('done');
+}
+
+function respond_to_regrade(id) {
+    var ans = {
+        grader:"<?=$user?>", 
+        slug:id.split('|',2)[0], 
+        student:id.split('|',3)[1],
+    }
+    var tmp = _grade(id);
+    for(var key in tmp) ans[key] = tmp[key];
+    
+    var rg = document.getElementById(id+"|regrade");
+    if (rg) {
+        if (rg.value.length < 4) { rg.classList.add('error'); throw new Error('Missing regrade'); }
+        rg.classList.remove('error');
+        ans.regrade = rg.value;
+    }
+
+    ajax(ans, 'respondtoregrade=1&asuser=<?=$user?>'); // FIX ME: add checking of response code
     document.getElementById("table|"+id).classList.add('done');
 }
 
@@ -502,7 +700,7 @@ function gradeableTree($limit=False) {
     global $issuperuser;
     $ans = array();
     $everyone = fullRoster();
-    foreach(assignments() as $slug => $details) {
+    foreach(assignments(true) as $slug => $details) {
         if ($limit && $slug != $limit) continue;
         $ct = closeTime($details);
         if ($ct == True && $ct < time() || $issuperuser) {
@@ -511,7 +709,7 @@ function gradeableTree($limit=False) {
                 && closeTime(json_decode(file_get_contents("$dir/.extension"),true)) > time()) {
                     continue;
                 }
-                if (count(glob("$dir/*", GLOB_NOSORT)) == 0) { continue; } // no submission
+                if (count(glob("$dir/*", GLOB_NOSORT)) == 0 && !file_exists("$dir/.grade")) { continue; } // no submission
                 $sid = explode('/',$dir)[2];
                 if (!array_key_exists($sid, $everyone)) continue; // non-student directory or file
                 if (file_exists("$dir/.partners")) {
@@ -531,7 +729,7 @@ function gradeableTree($limit=False) {
                     'ungraded'=>0,
                     'graders'=>array(),
                 );
-                if ($gid != 'no grader')
+                if (true)
                     $ans[$slug][$status] += 1;
 
                 if (!array_key_exists($gid, $ans[$slug]['graders'])) $ans[$slug]['graders'][$gid] = array(
@@ -555,7 +753,7 @@ function toGrade($slug, $grader, $redo) {
             $ans[] = $student;
         }
         shuffle($ans);
-    } else if ($redo == 'review') {
+    } else if ($redo == 'review' || $redo == 'review2') {
         if ($grader == 'all') { // show anything anyone has graded
             foreach(glob("users/.graded/*/$slug") as $req) {
                 $ans = array_merge($ans, explode("\n", trim(file_get_contents($req))));
@@ -565,6 +763,7 @@ function toGrade($slug, $grader, $redo) {
             if (file_exists("users/.graded/$grader/$slug"))
                 $ans = explode("\n", trim(file_get_contents("users/.graded/$grader/$slug")));
         }
+        $ans = array_unique($ans);
     } else if ($grader == 'all' || $grader == 'no grader') {
         foreach(glob("uploads/$slug/*") as $path) {
             if ((!$redo) == file_exists("$path/.grade")) continue;
@@ -675,8 +874,10 @@ if (array_key_exists('assignment', $_REQUEST)) {
         if (!$grader && count($stats['graders']) == 1) $grader = 'all';
         
         if ($redo == 'review' && $grader) {
-            echo "<h2>For $slug, you graded (most recent first):</h2><ul class='linklist'>";
-            foreach(array_reverse(toGrade($slug, $grader, $redo)) as $student) {
+            $list = toGrade($slug, $grader, $redo);
+            $count = count($list); 
+            echo "<h2>For $slug, you graded $count submissions (most recent first):</h2><ul class='linklist'>";
+            foreach(array_reverse($list) as $student) {
                 $stud = fullRoster()[$student];
                 echo "<li><a href='?assignment=$slug&student=$student'>$stud[name] ($student)</a>";
                 if ($grader != 'all') {
@@ -748,6 +949,9 @@ if (array_key_exists('assignment', $_REQUEST)) {
     echo '<h2>Pick an assignment:</h2>';
     echo '<ul class="linklist">';
     foreach($options as $slug=>$stats) {
+        if (array_key_exists('prefix', $_REQUEST) && substr($slug, 0, strlen($_REQUEST['prefix'])) != $_REQUEST['prefix']) {
+            continue;
+        }
         if (strlen($slug) == 0 || $slug[0] == '.') continue; // just in case
         echo "<li><a href='$_SERVER[SCRIPT_NAME]?assignment=$slug'";
         if ($stats['ungraded'] > 0) echo " class='ungraded'";

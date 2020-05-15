@@ -111,6 +111,9 @@ if ($isfaculty && array_key_exists('extension_decision', $_POST)) {
             else if (array_key_exists('late', $_POST) && is_array(json_decode($_POST['late'], true))) 
                 $object['late-policy'] = json_decode($_POST['late'], true);
             $object['close'] = closeTime($object + assignments()[$_POST['extension_assignment']]); // needed to overwrite optional close in assignment itself
+            if (date('Y-m-d H:i', $object['close']) < $object['due']) {
+                $object['close'] = strtotime($object['due']. " America/New_York");
+            }
             if (!file_put($extendfile, json_encode($object))) preFeedback("Failed to write .extension file");
             else {
                 preFeedback("Recorded new deadline of $object[due] (close time ".prettyTime($object['close']).") for $_POST[extension_assignment]/$_POST[extension_student]");
@@ -461,14 +464,18 @@ foreach($mine as $slug=>$details) {
     if (array_key_exists('excused', $details) && $details['excused']) echo 'excused';
     else if (array_key_exists('.ext-req', $details)) echo 'extension requested';
     else if (array_key_exists('.regrade-req', $details)) echo 'request awating review';
+    else if (array_key_exists('grade', $details)) echo 'full feedback available';
     else if ($class == 'closed') {
-        if (array_key_exists('grade', $details)) echo 'full feedback available';
-        else if (array_key_exists('files', $details) && !array_key_exists('.files', $details))
+        if (array_key_exists('files', $details) && !array_key_exists('.files', $details))
             echo 'not submitted';
         else echo 'awaiting feedback';
     } else if ($class == 'pending') echo 'not yet open';
-    else if (!array_key_exists('files', $details)) echo 'not submittable online';
-    else if (!array_key_exists('.files', $details)) echo 'not yet submitted';
+    else if (!array_key_exists('files', $details)) {
+        if (!array_key_exists('not-submittable-message'))
+            echo 'not submittable online';
+        else
+            echo $details['not-submittable-message'];
+    } else if (!array_key_exists('.files', $details)) echo 'not yet submitted';
     else if (array_key_exists('autograde', $details)) {
         if ($class == 'late') {
             echo 'test cases available';
