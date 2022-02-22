@@ -386,6 +386,8 @@ $extendable = ($now < $due || !$submitted)
 $regradable = TRUE;
 if (array_key_exists('no-regrade', $metadata) && array_key_exists($details['group'], $metadata['no-regrade']))
     $regradable = $metadata['no-regrade'][$details['group']];
+if (array_key_exists('no-regrade', $details))
+    $regradable = $detials['no-regrade'];
 
 // time category
 $status = ($now < $open) ? 'is not yet open' 
